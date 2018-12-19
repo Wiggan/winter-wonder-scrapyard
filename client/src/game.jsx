@@ -33,26 +33,31 @@ class Game extends React.Component {
 	render() {
 		return (
 			<div>
-				<canvas className="canvas" width={width} height={height} ref={node => this.mapcanvas = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.tracecanvas = node} ></canvas>
+				<canvas className="canvas" width={width} height={height} ref={node => this.bgcanvas = node} ></canvas>
+				<canvas className="canvas" width={width} height={height} ref={node => this.mapcanvas = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.canvas = node} ></canvas>
 			</div>
 		);
     }
 	
 	drawMap(ctx) {
+		var origShadowColor = ctx.shadowColor;
+		ctx.shadowColor = "rgb(150, 190, 255)";
+		ctx.shadowBlur = 4;
 		ctx.drawImage(this.mapcanvas, 0, 0);
+		ctx.shadowColor = origShadowColor;
+		ctx.save();
+		ctx.globalCompositeOperation = "source-atop";
 		ctx.globalAlpha = 0.2;
 		ctx.drawImage(this.tracecanvas, 0, 0);
 		ctx.globalAlpha = 1.0;
+		ctx.globalCompositeOperation = "source-over";
+		ctx.restore();
 	}
 	
-	renderMap(ctx) {
-		ctx.fillStyle =  "rgb(150, 190, 255)";
-		ctx.fillRect(0, 0, width, height);
+	renderLand(ctx) {
 		if(this.state.world.level !== undefined) {
-			ctx.fillStyle = this.state.world.level.colors[0];
-			ctx.fillRect(0, 0, width, height);
 			ctx.fillStyle = this.state.world.level.colors[1];
 			for(var x = 0; x < this.state.world.level.grid.length; x++) {
 				for(var y = 0; y < this.state.world.level.grid[0].length; y++) {
@@ -110,8 +115,15 @@ class Game extends React.Component {
 			});
 			ctx.shadowColor = origShadowColor;
 		}
-		
-		
+	}
+	
+	renderMap(bgctx, ctx) {
+		bgctx.clearRect(0, 0, width, height);
+		ctx.clearRect(0, 0, width, height);
+		this.tracecanvas.getContext("2d").clearRect(0, 0, width, height);
+		bgctx.fillStyle = this.state.world.level.colors[0];
+		bgctx.fillRect(0, 0, width, height);
+		this.renderLand(ctx);
 	}
 	
 	drawTire(ctx, tiresize, dubbs, spikes, driving) {
@@ -210,67 +222,69 @@ class Game extends React.Component {
 	
 	drawPlayers(ctx, ctx2) {
 		this.state.world.players.map((player) => {
-			ctx.save();
-			ctx.translate(player.pos[0], player.pos[1]);
-			ctx.rotate(player.rotation);
-			
-			ctx2.save();
-			ctx2.translate(player.pos[0], player.pos[1]);
-			ctx2.rotate(player.rotation);
-			ctx2.globalAlpha = 1;
-			
-			ctx2.shadowColor = 'black';
-			ctx2.shadowBlur = 3;
-			this.drawTires(ctx2, player.size, [player.tiresize[0]-3,player.tiresize[1]-3], false, false, player.driving, player.turning);
-			ctx2.restore();
-			
-			this.drawBody(ctx, player.size, player.color);
-			this.drawTires(ctx, player.size, player.tiresize, player.dubbs, player.spikes, player.driving, player.turning);
-			if(player.rockets) {
-				this.drawRocketLauncher(ctx, player.towerrotation, player.tripple);
-			}
-			
-			if(player.bumper === true) {
-				ctx.fillStyle = "grey";
-				ctx.beginPath();
-				ctx.moveTo(-player.size[0]/2, player.size[1]/2);
-				ctx.lineTo(-player.size[0]/2, player.size[1]/2 + 1);
-				ctx.lineTo(-player.size[0]/2 + 2, player.size[1]/2 + 3);
-				ctx.lineTo(player.size[0]/2 - 2, player.size[1]/2 + 3);
-				ctx.lineTo(player.size[0]/2, player.size[1]/2 + 1);
-				ctx.lineTo(player.size[0]/2, player.size[1]/2);
-				ctx.fill();
-			}
-			
-			ctx.restore();
-			
-			if(this.outsideScreen(player.pos)) {
-				const arrowRadius = 15;
+			if(player.alive) {
 				ctx.save();
-				ctx.globalAlpha = 0.75;
-
-				var x = Math.min(Math.max(player.pos[0], arrowRadius), width-arrowRadius);
-				var y = Math.min(Math.max(player.pos[1], arrowRadius), height-arrowRadius);
-				ctx.translate(x, y);
-				
+				ctx.translate(player.pos[0], player.pos[1]);
 				ctx.rotate(player.rotation);
-				ctx.fillStyle = player.color;
-				ctx.strokeStyle = "black";
 				
-				ctx.beginPath();
-				ctx.moveTo(-arrowRadius/2, -arrowRadius);
-				ctx.lineTo(arrowRadius/2, -arrowRadius);
-				ctx.lineTo(arrowRadius/2, 0);
-				ctx.lineTo(arrowRadius, 0);
-				ctx.lineTo(0, arrowRadius);
-				ctx.lineTo(-arrowRadius, 0);
-				ctx.lineTo(-arrowRadius/2, 0);
-				ctx.lineTo(-arrowRadius/2, -arrowRadius);
-				ctx.fill();
-				ctx.stroke();
+				ctx2.save();
+				ctx2.translate(player.pos[0], player.pos[1]);
+				ctx2.rotate(player.rotation);
+				ctx2.globalAlpha = 1;
 				
-				ctx.globalAlpha = 1;
+				ctx2.shadowColor = 'black';
+				ctx2.shadowBlur = 3;
+				this.drawTires(ctx2, player.size, [player.tiresize[0]-3,player.tiresize[1]-3], false, false, player.driving, player.turning);
+				ctx2.restore();
+				
+				this.drawBody(ctx, player.size, player.color);
+				this.drawTires(ctx, player.size, player.tiresize, player.dubbs, player.spikes, player.driving, player.turning);
+				if(player.rockets) {
+					this.drawRocketLauncher(ctx, player.towerrotation, player.tripple);
+				}
+				
+				if(player.bumper === true) {
+					ctx.fillStyle = "grey";
+					ctx.beginPath();
+					ctx.moveTo(-player.size[0]/2, player.size[1]/2);
+					ctx.lineTo(-player.size[0]/2, player.size[1]/2 + 1);
+					ctx.lineTo(-player.size[0]/2 + 2, player.size[1]/2 + 3);
+					ctx.lineTo(player.size[0]/2 - 2, player.size[1]/2 + 3);
+					ctx.lineTo(player.size[0]/2, player.size[1]/2 + 1);
+					ctx.lineTo(player.size[0]/2, player.size[1]/2);
+					ctx.fill();
+				}
+				
 				ctx.restore();
+				
+				if(this.outsideScreen(player.pos)) {
+					const arrowRadius = 15;
+					ctx.save();
+					ctx.globalAlpha = 0.75;
+
+					var x = Math.min(Math.max(player.pos[0], arrowRadius), width-arrowRadius);
+					var y = Math.min(Math.max(player.pos[1], arrowRadius), height-arrowRadius);
+					ctx.translate(x, y);
+					
+					ctx.rotate(player.rotation);
+					ctx.fillStyle = player.color;
+					ctx.strokeStyle = "black";
+					
+					ctx.beginPath();
+					ctx.moveTo(-arrowRadius/2, -arrowRadius);
+					ctx.lineTo(arrowRadius/2, -arrowRadius);
+					ctx.lineTo(arrowRadius/2, 0);
+					ctx.lineTo(arrowRadius, 0);
+					ctx.lineTo(0, arrowRadius);
+					ctx.lineTo(-arrowRadius, 0);
+					ctx.lineTo(-arrowRadius/2, 0);
+					ctx.lineTo(-arrowRadius/2, -arrowRadius);
+					ctx.fill();
+					ctx.stroke();
+					
+					ctx.globalAlpha = 1;
+					ctx.restore();
+				}
 			}
 		});
 	}
@@ -320,7 +334,9 @@ class Game extends React.Component {
 	
 	update() {
 		var ctx = this.canvas.getContext("2d");
+		ctx.clearRect(0, 0, width, height);
 		var ctx2 = this.tracecanvas.getContext("2d");
+		
 		this.drawMap(ctx);
 		this.drawPlayers(ctx, ctx2);
 		this.drawScraps(ctx);
@@ -357,8 +373,7 @@ class Game extends React.Component {
 		console.log("Got new map!");
 		var level = JSON.parse(msg);
 		this.state.world.level = level;
-		this.renderMap(this.mapcanvas.getContext("2d"));
-		this.tracecanvas.getContext("2d").clearRect(0, 0, width, height);
+		this.renderMap(this.bgcanvas.getContext("2d"), this.mapcanvas.getContext("2d"));
 		this.setState({
 			world: this.state.world
 		});

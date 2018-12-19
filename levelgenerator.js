@@ -22,7 +22,7 @@ module.exports = class LevelGenerator {
 	generate(width, height) {
 		this.width = width;
 		this.height = height;
-		this.squareSize = 40;
+		this.squareSize = 60;
 		this.cols = Math.round(this.width / this.squareSize);
 		this.rows = Math.round(this.height / this.squareSize);
 		this.randomFill();
@@ -126,8 +126,24 @@ module.exports = class LevelGenerator {
 		return rocks;
 	}
 	
+	outsideScreen(pos) {
+		return pos[0] < 0 || pos[0] > this.width || pos[1] < 0 || pos[1] > this.height;
+	}
+	
 	isInWater(pos) {
-		return this.grid[Math.floor(pos[0]/this.squareSize)][Math.floor(pos[1]/this.squareSize)] === 0;
+		try {
+		var x = Math.floor(pos[0]/this.squareSize);
+		var y = Math.floor(pos[1]/this.squareSize);
+		if(x < 0 || x >= this.grid.length || y < 0 || y > this.grid[0].length) {
+			return true;
+		}
+		return this.outsideScreen(pos) || this.grid[x][y] === 0;
+		} catch(err) {
+			console.log(pos);
+			console.log(this.grid);
+			console.log(this.squareSize);
+			process.exit(1);
+		}
 	}
 
 	isCollidingWithMapElements(pos) {

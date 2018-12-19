@@ -45,7 +45,10 @@ io.world = {
 	scraps: [],
 	rocks: [],
 	effects: [],
-	ranking: []
+	ranking: [],
+	arena: false,
+	gameOn: false,
+	physicsOn: true,
 };
 
 function getPrerequisiteEdges(id) {
@@ -59,10 +62,8 @@ function getCurrentShop(player) {
 			node.owned = true;
 			node.chosen = false;
 		} else if (getPrerequisiteEdges(node.id).every((edge) => player.upgrades.includes(edge.from)) === false) {
-			console.log("1 " + node.label);
 			node.chosen = false;
 		} else if (player.hud.scrap < node.cost) {
-			console.log("2 " + node.label);
 			node.chosen = false;
 		}
 	});
@@ -86,27 +87,104 @@ function updateAppearanceDueToKeyEvent(player) {
 	}
 }
 
+function respawnPlayer(player) {
+	player.status.pos = level.getCollisionFreePosition();
+	player.status.vel = [0, 0];
+	player.status.rotation = chance.floating({ min: 0, max: 2*Math.PI });
+	player.status.alive = true;
+	player.status.health = 100;
+}
+
+function doWeHaveAWinner() {
+	var winner = undefined;
+	Object.values(io.sockets.sockets).map((socket) => {
+		if(socket.player.hud.score === 3) {
+			winner = socket.player.hud;
+		}
+	});
+	return winner;
+}
+function startNormalRound() {
+	console.log("Starting normal round!");
+	io.world.physicsOn = false;
+	io.world.arena = false;
+	io.world.scraps = [];
+	io.world.level = level.generate(800, 600);
+	io.emit('new map', JSON.stringify(io.world.level));
+	Object.values(io.sockets.sockets).map((socket) => {
+		respawnPlayer(socket.player);
+	});
+	
+	io.world.scrapInterval = setInterval(() => {
+		if(io.world.scraps.length < 5) {
+			io.world.scraps.push({pos: level.getCollisionFreePosition()});
+		}
+	}, 5000);
+	setTimeout(() => {
+		io.world.physicsOn = true;
+	}, 2000);
+	setTimeout(() => {
+		startArenaRound();
+	}, config.parameters.roundTime);
+}
+
+function startArenaRound() {
+	console.log("Starting arena!");
+	io.world.physicsOn = false;
+	io.world.arena = true;
+	io.world.scraps = [];
+	clearInterval(io.world.scrapInterval);
+	io.world.level = level.generate(800, 600);
+	io.emit('new map', JSON.stringify(io.world.level));
+	Object.values(io.sockets.sockets).map((socket) => {
+		respawnPlayer(socket.player);
+	});
+	io.world.countPlayersAliveInterval = setInterval(() => {
+		var alivers = [];
+		Object.values(io.sockets.sockets).map((socket) => {
+			if(socket.player.status.alive) alivers.push(socket.player.hud);
+		});
+		if(alivers.length <= 1) {
+			clearInterval(io.world.countPlayersAliveInterval);
+			if(alivers.length == 1) {
+				alivers[0].score++;
+				alivers[0].scrap += 5;
+				updatePlayerList()
+			}
+			startNormalRound();
+		}
+	}, 1000);
+	setTimeout(() => {
+		io.world.physicsOn = true;
+	}, 2000);
+}
+
 function updatePlayerList() {
 	io.world.ranking = []
 	var readyCount = 0;
 	Object.values(io.sockets.sockets).map((socket) => {
 		io.world.ranking.push(socket.player.hud);
 		if(socket.player.hud.ready) readyCount++;
+		socket.emit('hud update', JSON.stringify(socket.player.hud));
 	});
 	io.world.ranking.sort((a, b) => { return a.score > b.score ? -1 : 1; });
 	io.emit('score update', JSON.stringify(io.world.ranking));
 	
-	if(readyCount === io.world.ranking.length) {
+	if(!io.world.gameOn && readyCount === io.world.ranking.length) {
 		// Start the game!
+		io.world.physicsOn = false;
+		io.world.gameOn = true;
+		console.log("All are ready, game is starting!");
 		Object.values(io.sockets.sockets).map((socket) => {
-			console.log(socket.player);
-			socket.player.stats = Object.assign(socket.player.stats, config.player.stats);
-			socket.player.status = Object.assign(socket.player.status, config.player.status);
+			socket.player.stats = Object.assign(socket.player.stats, JSON.parse(JSON.stringify(config.player.stats)));
+			socket.player.status = Object.assign(socket.player.status, JSON.parse(JSON.stringify(config.player.status)));
 			socket.player.hud = Object.assign(socket.player.hud, config.player.hud);
 			socket.player.upgrades = [];
 			socket.emit('hud update', JSON.stringify(socket.player.hud));
 			socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
 		});
+		
+		startNormalRound();
 	}
 }
 
@@ -229,6 +307,8 @@ io.on('connection', function(socket){
 			towerrotation: 0,
 			turning: 0,
 			driving: 0,
+			alive: true,
+			health: 100,
 
 			size: [14, 20],
 			tiresize: [4, 6],
@@ -274,6 +354,7 @@ io.on('connection', function(socket){
 	
 	io.world.players.push(socket.player.status);
 	socket.emit('new map', JSON.stringify(io.world.level));
+	socket.emit('hud update', JSON.stringify(socket.player.hud));
 	updatePlayerList();
 });
 
@@ -305,233 +386,254 @@ function scalarProjection(a, b) {
 
 app.listen(3000, function(){
     console.log('listening on *:3000');
-    setInterval(() => {
-		var elapsed = 0.016666; // Fix this
-		
-		// Collision
-		Object.values(io.sockets.sockets).map((socket1) => {
-			// fast forward inner loop, to avoid duplicate pairs.
-			var ff = false;
-			var pos1 = socket1.player.status.pos;
-			Object.values(io.sockets.sockets).map((socket2) => {
-				if(socket1 == socket2) { ff = true; };
-				if(ff) {
-					var pos2 = socket2.player.status.pos;
-					if (socket1 != socket2 && dist(pos1, pos2) < socket2.player.status.size[0]*2) {
-						console.log("Krock!");
-						var direction = norm(sub(copy(pos2), pos1));
-						var vel1 = copy(socket1.player.status.vel);
-						var vel2 = copy(socket2.player.status.vel);
-						
-						if(mag(vel1) > 0.1) {
-							var impact1 = mult(copy(direction), scalarProjection(vel1, copy(direction)));
-							sub(socket1.player.status.vel, impact1);
-							if(socket1.player.stats.bumper && Math.abs(angle(impact1, rad2dir(socket1.player.status.rotation))) < 0.8) {
-								mult(impact1, socket1.player.stats.bumperFactor);
-							}
-							add(socket2.player.status.vel, impact1);
-						}
-						if (mag(vel2) > 0.1) {
-							var opposite = mult(copy(direction), -1);
-							var impact2 = mult(copy(opposite), scalarProjection(vel2, opposite));
-							sub(socket2.player.status.vel, impact2);
-							if(socket2.player.stats.bumper && Math.abs(angle(impact2, rad2dir(socket2.player.status.rotation))) < 0.8) {
-								mult(impact2, socket2.player.stats.bumperFactor);
-							}
-							add(socket1.player.status.vel, impact2);
-						}
-						if (mag(vel1) + mag(vel2) > 10) {
-							io.world.effects.push(particle.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
-						}
-						
-					}
-				}
-			});
-			
-			// Collision with rocks
-			io.world.level.rocks.map((rock) => {
-				var distance = dist(socket1.player.status.pos, rock.pos);
-				var radii = socket1.player.status.size[0] + rock.radius;
-				if (distance < radii) {
-					var direction = norm(sub(copy(socket1.player.status.pos), rock.pos));
-					var component = mult(copy(direction), scalarProjection(socket1.player.status.vel, copy(direction))*1.8);
-					sub(socket1.player.status.vel, component);
-					sub(socket1.player.status.pos, mult(norm(copy(component)), radii - distance));
-					if(mag(component) > 100) {
-						io.world.effects.push(particle.generateSmoke(add(copy(rock.pos), mult(copy(direction), rock.radius)),mag(component)/300));
-						
-					}
-				}
-			});
-			
-			// Collision with projectiles
-			io.world.projectiles.map((projectile) => {
-				var pos2 = projectile.pos;
-				if (socket1.player.status.id != projectile.owner && dist(pos1, pos2) < socket1.player.status.size[0]) {
-					console.log("Träff!");
-					var direction = norm(copy(projectile.vel));
-					add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
-					projectile.done = true;
-					io.world.effects.push(particle.generateExplosion(projectile.pos));
-				}
-			});
-			
-			// Collision with scrap
-			io.world.scraps.map((scrap) => {
-				var pos2 = scrap.pos;
-				if (dist(pos1, pos2) < socket1.player.status.size[0]) {
-					socket1.player.hud.scrap++;
-					socket1.emit('hud update', JSON.stringify(socket1.player.hud));
-					socket1.emit('get shop', JSON.stringify(getCurrentShop(socket1.player)));
-					scrap.done = true;
-				}
-			});
-			
-			
-		});
-		
-		io.world.projectiles.map((projectile) => {
-			add(projectile.pos, mult(copy(projectile.vel), elapsed));
-			if (mag(projectile.pos) > 2000) {
-				projectile.done = true;
-			}
-		});
-		
-		
-		
-		Object.values(io.sockets.sockets).map((socket) => {
-			// Get forward and sideway velocity components	
-			var force = [0, 0];
-			if(socket.player.keysDown.includes(KeyEnum.forward)) {
-				add(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.acc));
-			} 
-			if(socket.player.keysDown.includes(KeyEnum.backward)) {
-				sub(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.acc));
-			}
-			if(socket.player.keysDown.includes(KeyEnum.brake)) {
-				sub(force, mult(norm(copy(socket.player.status.vel)), socket.player.stats.brakeFriction));
-			}
-			if(socket.player.keysDown.includes(KeyEnum.boost)) {
-				if(socket.player.stats.boost && !socket.player.stats.boostCooldown) {
-					console.log("Boosting");
-					socket.player.stats.boostCooldown = true;
-					add(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.boostForce));
-					setTimeout(function(){ socket.player.stats.boostCooldown = false; }, socket.player.stats.boostCooldownTime);
-					io.world.effects.push(particle.generateExplosion(sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), socket.player.status.size[1]))));
-				}
-			}
-			if(socket.player.keysDown.includes(KeyEnum.towerleft) && socket.player.stats.towerRotation) {
-				socket.player.status.towerrotation -= socket.player.stats.towerRotationSpeed * elapsed;
-			}
-			if(socket.player.keysDown.includes(KeyEnum.towerright) && socket.player.stats.towerRotation) {
-				socket.player.status.towerrotation += socket.player.stats.towerRotationSpeed * elapsed;
-			}
-			if(socket.player.keysDown.includes(KeyEnum.fire)) {
-				if(socket.player.stats.rockets && !socket.player.stats.rocketsCooldown) {
-					console.log("Shooting");
-					socket.player.stats.rocketsCooldown = true;
-					var rotation = socket.player.status.towerrotation + socket.player.status.rotation;
-					var velocity = add(mult(rad2dir(rotation), socket.player.stats.rocketSpeed), socket.player.status.vel);
-					
-					io.world.projectiles.push({
-						vel: velocity,
-						rotation: rotation,
-						pos: copy(socket.player.status.pos),
-						owner: socket.player.status.id,
-					});
-					if(socket.player.stats.tripple) {
-						var rotation2 = socket.player.status.towerrotation + socket.player.status.rotation + 0.2;
-						var velocity2 = add(mult(rad2dir(rotation2), socket.player.stats.rocketSpeed), socket.player.status.vel);
-						var rotation3 = socket.player.status.towerrotation + socket.player.status.rotation - 0.2;
-						var velocity3 = add(mult(rad2dir(rotation3), socket.player.stats.rocketSpeed), socket.player.status.vel);
-						io.world.projectiles.push({
-							vel: velocity2,
-							rotation: rotation2,
-							pos: copy(socket.player.status.pos),
-							owner: socket.player.status.id,
-						});
-						io.world.projectiles.push({
-							vel: velocity3,
-							rotation: rotation3,
-							pos: copy(socket.player.status.pos),
-							owner: socket.player.status.id,
-						});
-					}
-					console.log(io.world.projectiles);
-					setTimeout(function(){ socket.player.stats.rocketsCooldown = false; }, socket.player.stats.rocketsCooldownTime);
-				}
-			}
-			
-			sub(force, mult(norm(copy(socket.player.status.vel)), socket.player.stats.friction));
-			
-			// NaN problem with angles when stationary
-			if(mag(socket.player.status.vel) > 0.17) {
-
-				var forward = rad2dir(socket.player.status.rotation)
-				
-				var a = angle(copy(forward), copy(socket.player.status.vel));
-				var forwardComponentMag = Math.cos(a) * mag(socket.player.status.vel);
-				var forwardComponent = mult(forward, forwardComponentMag);
-				var sideComponent = sub(copy(socket.player.status.vel), forwardComponent);
-				sub(force, mult(sideComponent, socket.player.stats.grip));
-				
-				
-				// Handle rotation
-				if(socket.player.keysDown.includes(KeyEnum.left)) {
-					socket.player.status.rotation -= socket.player.stats.rotationSpeed * forwardComponentMag * elapsed;
-				}
-				if(socket.player.keysDown.includes(KeyEnum.right)) {
-					socket.player.status.rotation += socket.player.stats.rotationSpeed * forwardComponentMag * elapsed;
-				}
-			} else if(socket.player.stats.freeRotataion) {
-				if(socket.player.keysDown.includes(KeyEnum.left)) {
-					socket.player.status.rotation -= socket.player.stats.rotationSpeed * elapsed * 100;
-				}
-				if(socket.player.keysDown.includes(KeyEnum.right)) {
-					socket.player.status.rotation += socket.player.stats.rotationSpeed * elapsed * 100;
-				}
-			}
-			
-			add(socket.player.status.vel, mult(force, elapsed));
-			add(socket.player.status.pos, mult(copy(socket.player.status.vel), elapsed));
-			
-		});
-		
-		io.world.effects.map((effect) => {
-			var age = Date.now() - effect.birth;
-			effect.progress = age / effect.duration;
-			if(effect.progress >= 1) {
-				effect.done = true;
-			} else {
-				effect.particles.map((particle) => {
-					add(particle.pos, mult(copy(particle.direction), particle.speed));
-				});
-			}
-		});
-		
-		// Collision between projectiles and map elements
-		io.world.projectiles.map((projectile) => {
-			io.world.level.rocks.map((rock) => {
-				if (dist(projectile.pos, rock.pos) < rock.radius) {
-					projectile.done = true;
-					io.world.effects.push(particle.generateExplosion(projectile.pos));					
-				}
-			});
-		});
-		
-		io.world.effects = io.world.effects.filter((effect) => {
-			return effect.done !== true;
-		});
-		io.world.projectiles = io.world.projectiles.filter((projectile) => {
-			return projectile.done !== true;
-		});
-		io.world.scraps = io.world.scraps.filter((scrap) => {
-			return scrap.done !== true;
-		});
-		
-	}, 16.6666);
 	io.world.level = level.generate(800, 600);
 	io.emit('new map', JSON.stringify(io.world.level));
+	
+    setInterval(() => {
+		var elapsed = 0.016666; // Fix this
+		if(io.world.physicsOn) {
+			// Collision
+			Object.values(io.sockets.sockets).map((socket1) => {
+				// fast forward inner loop, to avoid duplicate pairs.
+				var ff = false;
+				var pos1 = socket1.player.status.pos;
+				Object.values(io.sockets.sockets).map((socket2) => {
+					if(socket1 == socket2) { ff = true; };
+					if(ff) {
+						var pos2 = socket2.player.status.pos;
+						if (socket1 != socket2 && dist(pos1, pos2) < socket2.player.status.size[0]*2) {
+							console.log("Krock!");
+							var direction = norm(sub(copy(pos2), pos1));
+							var vel1 = copy(socket1.player.status.vel);
+							var vel2 = copy(socket2.player.status.vel);
+							
+							if(mag(vel1) > 0.1) {
+								var impact1 = mult(copy(direction), scalarProjection(vel1, copy(direction)));
+								sub(socket1.player.status.vel, impact1);
+								if(socket1.player.stats.bumper && Math.abs(angle(impact1, rad2dir(socket1.player.status.rotation))) < 0.8) {
+									mult(impact1, socket1.player.stats.bumperFactor);
+								}
+								add(socket2.player.status.vel, impact1);
+							}
+							if (mag(vel2) > 0.1) {
+								var opposite = mult(copy(direction), -1);
+								var impact2 = mult(copy(opposite), scalarProjection(vel2, opposite));
+								sub(socket2.player.status.vel, impact2);
+								if(socket2.player.stats.bumper && Math.abs(angle(impact2, rad2dir(socket2.player.status.rotation))) < 0.8) {
+									mult(impact2, socket2.player.stats.bumperFactor);
+								}
+								add(socket1.player.status.vel, impact2);
+							}
+							if (mag(vel1) + mag(vel2) > 10) {
+								io.world.effects.push(particle.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
+							}
+							
+						}
+					}
+				});
+				
+				// Collision with rocks
+				io.world.level.rocks.map((rock) => {
+					var distance = dist(socket1.player.status.pos, rock.pos);
+					var radii = socket1.player.status.size[0] + rock.radius;
+					if (distance < radii) {
+						var direction = norm(sub(copy(socket1.player.status.pos), rock.pos));
+						var component = mult(copy(direction), scalarProjection(socket1.player.status.vel, copy(direction))*1.8);
+						sub(socket1.player.status.vel, component);
+						sub(socket1.player.status.pos, mult(norm(copy(component)), radii - distance));
+						if(mag(component) > 100) {
+							io.world.effects.push(particle.generateSmoke(add(copy(rock.pos), mult(copy(direction), rock.radius)),mag(component)/300));
+							
+						}
+					}
+				});
+				
+				// Collision with projectiles
+				io.world.projectiles.map((projectile) => {
+					var pos2 = projectile.pos;
+					if (socket1.player.status.id != projectile.owner && dist(pos1, pos2) < socket1.player.status.size[0]) {
+						console.log("Träff!");
+						var direction = norm(copy(projectile.vel));
+						add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
+						projectile.done = true;
+						io.world.effects.push(particle.generateExplosion(projectile.pos));
+					}
+				});
+				
+				// Collision with scrap
+				io.world.scraps.map((scrap) => {
+					var pos2 = scrap.pos;
+					if (dist(pos1, pos2) < socket1.player.status.size[0]) {
+						socket1.player.hud.scrap++;
+						socket1.emit('hud update', JSON.stringify(socket1.player.hud));
+						socket1.emit('get shop', JSON.stringify(getCurrentShop(socket1.player)));
+						scrap.done = true;
+					}
+				});
+				
+				
+			});
+			
+			io.world.projectiles.map((projectile) => {
+				add(projectile.pos, mult(copy(projectile.vel), elapsed));
+				if (mag(projectile.pos) > 2000) {
+					projectile.done = true;
+				}
+			});
+			
+			
+			
+			Object.values(io.sockets.sockets).map((socket) => {
+					if(socket.player.status.alive) {
+					// Get forward and sideway velocity components	
+					var force = [0, 0];
+					if(socket.player.keysDown.includes(KeyEnum.forward)) {
+						add(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.acc));
+					} 
+					if(socket.player.keysDown.includes(KeyEnum.backward)) {
+						sub(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.acc));
+					}
+					if(socket.player.keysDown.includes(KeyEnum.brake)) {
+						sub(force, mult(norm(copy(socket.player.status.vel)), socket.player.stats.brakeFriction));
+					}
+					if(socket.player.keysDown.includes(KeyEnum.boost)) {
+						if(socket.player.stats.boost && !socket.player.stats.boostCooldown) {
+							console.log("Boosting");
+							socket.player.stats.boostCooldown = true;
+							add(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.boostForce));
+							setTimeout(function(){ socket.player.stats.boostCooldown = false; }, socket.player.stats.boostCooldownTime);
+							io.world.effects.push(particle.generateExplosion(sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), socket.player.status.size[1]))));
+						}
+					}
+					if(socket.player.keysDown.includes(KeyEnum.towerleft) && socket.player.stats.towerRotation) {
+						socket.player.status.towerrotation -= socket.player.stats.towerRotationSpeed * elapsed;
+					}
+					if(socket.player.keysDown.includes(KeyEnum.towerright) && socket.player.stats.towerRotation) {
+						socket.player.status.towerrotation += socket.player.stats.towerRotationSpeed * elapsed;
+					}
+					if(socket.player.keysDown.includes(KeyEnum.fire)) {
+						if(socket.player.stats.rockets && !socket.player.stats.rocketsCooldown) {
+							console.log("Shooting");
+							socket.player.stats.rocketsCooldown = true;
+							var rotation = socket.player.status.towerrotation + socket.player.status.rotation;
+							var velocity = add(mult(rad2dir(rotation), socket.player.stats.rocketSpeed), socket.player.status.vel);
+							
+							io.world.projectiles.push({
+								vel: velocity,
+								rotation: rotation,
+								pos: copy(socket.player.status.pos),
+								owner: socket.player.status.id,
+							});
+							if(socket.player.stats.tripple) {
+								var rotation2 = socket.player.status.towerrotation + socket.player.status.rotation + 0.2;
+								var velocity2 = add(mult(rad2dir(rotation2), socket.player.stats.rocketSpeed), socket.player.status.vel);
+								var rotation3 = socket.player.status.towerrotation + socket.player.status.rotation - 0.2;
+								var velocity3 = add(mult(rad2dir(rotation3), socket.player.stats.rocketSpeed), socket.player.status.vel);
+								io.world.projectiles.push({
+									vel: velocity2,
+									rotation: rotation2,
+									pos: copy(socket.player.status.pos),
+									owner: socket.player.status.id,
+								});
+								io.world.projectiles.push({
+									vel: velocity3,
+									rotation: rotation3,
+									pos: copy(socket.player.status.pos),
+									owner: socket.player.status.id,
+								});
+							}
+							console.log(io.world.projectiles);
+							setTimeout(function(){ socket.player.stats.rocketsCooldown = false; }, socket.player.stats.rocketsCooldownTime);
+						}
+					}
+					
+					sub(force, mult(norm(copy(socket.player.status.vel)), socket.player.stats.friction));
+					
+					// NaN problem with angles when stationary
+					if(mag(socket.player.status.vel) > 0.17) {
+
+						var forward = rad2dir(socket.player.status.rotation)
+						
+						var a = angle(copy(forward), copy(socket.player.status.vel));
+						var forwardComponentMag = Math.cos(a) * mag(socket.player.status.vel);
+						var forwardComponent = mult(forward, forwardComponentMag);
+						var sideComponent = sub(copy(socket.player.status.vel), forwardComponent);
+						sub(force, mult(sideComponent, socket.player.stats.grip));
+						
+						
+						// Handle rotation
+						if(socket.player.keysDown.includes(KeyEnum.left)) {
+							socket.player.status.rotation -= socket.player.stats.rotationSpeed * forwardComponentMag * elapsed;
+						}
+						if(socket.player.keysDown.includes(KeyEnum.right)) {
+							socket.player.status.rotation += socket.player.stats.rotationSpeed * forwardComponentMag * elapsed;
+						}
+					} else if(socket.player.stats.freeRotataion) {
+						if(socket.player.keysDown.includes(KeyEnum.left)) {
+							socket.player.status.rotation -= socket.player.stats.rotationSpeed * elapsed * 100;
+						}
+						if(socket.player.keysDown.includes(KeyEnum.right)) {
+							socket.player.status.rotation += socket.player.stats.rotationSpeed * elapsed * 100;
+						}
+					}
+					
+					add(socket.player.status.vel, mult(force, elapsed));
+					add(socket.player.status.pos, mult(copy(socket.player.status.vel), elapsed));
+					
+					// Check if player is in water
+					if(level.isInWater(socket.player.status.pos)) {
+						socket.player.status.health -= elapsed * config.parameters.waterDamage;
+						if(socket.player.status.health <= 0) {
+							io.world.effects.push(particle.generateExplosion(socket.player.status.pos));
+							socket.player.status.alive = false;
+							if(!io.world.arena) {
+								socket.player.hud.scrap = 0;
+								socket.emit('hud update', JSON.stringify(socket.player.hud));
+							}
+							setTimeout(() => {
+								if(!io.world.arena && !socket.player.status.alive) {
+									respawnPlayer(socket.player);
+								}
+							}, 2000);
+						}
+					}
+				}
+			});
+			
+			
+			io.world.effects.map((effect) => {
+				var age = Date.now() - effect.birth;
+				effect.progress = age / effect.duration;
+				if(effect.progress >= 1) {
+					effect.done = true;
+				} else {
+					effect.particles.map((particle) => {
+						add(particle.pos, mult(copy(particle.direction), particle.speed));
+					});
+				}
+			});
+			
+			// Collision between projectiles and map elements
+			io.world.projectiles.map((projectile) => {
+				io.world.level.rocks.map((rock) => {
+					if (dist(projectile.pos, rock.pos) < rock.radius) {
+						projectile.done = true;
+						io.world.effects.push(particle.generateExplosion(projectile.pos));					
+					}
+				});
+			});
+			
+			io.world.effects = io.world.effects.filter((effect) => {
+				return effect.done !== true;
+			});
+			io.world.projectiles = io.world.projectiles.filter((projectile) => {
+				return projectile.done !== true;
+			});
+			io.world.scraps = io.world.scraps.filter((scrap) => {
+				return scrap.done !== true;
+			});
+		}
+	}, 16.6666);
 	setInterval(() => {
 		io.emit('world update', JSON.stringify({
 			players: io.world.players,
@@ -540,10 +642,4 @@ app.listen(3000, function(){
 			effects: io.world.effects,
 		}));
 	}, 16.6666);
-	setInterval(() => {
-		if(io.world.scraps.length < 5) {
-			io.world.scraps.push({pos: level.getCollisionFreePosition()});
-		}
-	}, 5000);
-	
 });

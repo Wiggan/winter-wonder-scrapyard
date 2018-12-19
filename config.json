@@ -99,6 +99,8 @@
 			"towerrotation": 0,
 			"turning": 0,
 			"driving": 0,
+			"alive": true,
+			"health": 100,
 
 			"size": [14, 20],
 			"tiresize": [4, 6],
@@ -135,5 +137,9 @@
 			"scrap": 0,
 			"score": 0
 		}
+	},
+	"parameters": {
+		"waterDamage": 100,
+		"roundTime": 50000
 	}
 }
