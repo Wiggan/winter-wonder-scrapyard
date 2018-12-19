@@ -1,0 +1,139 @@
+{
+	"shop": {
+		"nodes": [
+			{
+				"id": 1,
+				"label": "Dubbdäck",
+				"cost": 1,
+				"level": 1
+			},
+			{
+				"id": 2,
+				"label": "Fri Rotation",
+				"cost": 1,
+				"level": 2
+			},
+			{
+				"id": 3,
+				"label": "Bättre svängradie",
+				"cost": 2,
+				"level": 3
+			},
+			{
+				"id": 4,
+				"label": "Snabbare motor",
+				"cost": 3,
+				"level": 2
+			},
+			{
+				"id": 5,
+				"label": "Turboskjuts",
+				"cost": 5,
+				"level": 3
+			},
+			{
+				"id": 6,
+				"label": "Spikdäck",
+				"cost": 4,
+				"level": 2
+			},
+			
+			{
+				"id": 101,
+				"label": "Kofångare",
+				"cost": 1,
+				"level": 1
+			},
+			{
+				"id": 102,
+				"label": "Vinklad nos",
+				"cost": 3,
+				"level": 2
+			},
+			
+			{
+				"id": 201,
+				"label": "Raketgevär",
+				"cost": 4,
+				"level": 1
+			},
+			{
+				"id": 202,
+				"label": "Handvetat kanontorn",
+				"cost": 4,
+				"level": 2
+			},
+			{
+				"id": 203,
+				"label": "Servokanontorn",
+				"cost": 3,
+				"level": 3
+			},
+			{
+				"id": 204,
+				"label": "Trippelraket",
+				"cost": 3,
+				"level": 2
+			}
+			
+		],
+		"edges": [
+		  {"from": 1, "to": 2},
+		  {"from": 1, "to": 4},
+		  {"from": 2, "to": 3},
+		  {"from": 4, "to": 5},
+		  {"from": 1, "to": 6},
+		  
+		  
+		  {"from": 101, "to": 102},
+		  
+		  
+		  {"from": 201, "to": 202},
+		  {"from": 202, "to": 203},
+		  {"from": 201, "to": 204}
+		]
+	},
+	"player": {
+		"status": {
+			"vel": [0, 0],
+			"towerrotation": 0,
+			"turning": 0,
+			"driving": 0,
+
+			"size": [14, 20],
+			"tiresize": [4, 6],
+			"bumper": false,
+			"dubbs": false,
+			"spikes": false,
+			"rockets": false,
+			"tripple": false
+		},
+		"stats": {
+			"acc": 70,
+			"friction": 20,
+			"bumperFactor": 2,
+			"boostForce": 10000,
+			"boostCooldownTime": 3000,
+			"rocketsCooldownTime": 2000,
+			"rocketSpeed": 400,
+			"rocketForce": 300,
+			"brakeFriction": 200,
+			"grip": 0.8,
+			"rotationSpeed": 0.007,
+			"towerRotationSpeed": 1,
+			
+			"bumper": false,
+			"freeRotataion": false,
+			"boost": false,
+			"boostCooldown": false,
+			"rockets": false,
+			"rocketsCooldown": false,
+			"towerRotation": false,
+			"tripple": false
+		},
+		"hud": {
+			"scrap": 0,
+			"score": 0
+		}
+	}
+}

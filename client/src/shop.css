@@ -1,0 +1,38 @@
+
+
+.item {
+	height: 2em;
+	width: 6em;
+	padding: 1em;
+	margin: 1em;
+	border: solid 2px grey;
+}
+
+.ownedItem {
+	border: solid 2px black;
+}
+
+.availableItem{
+	border: solid 2px green;
+}
+
+.unavailableItem{
+	border: solid 2px grey;
+}
+
+.speedItems{
+	float:left;
+}
+
+.column{
+    width: 100px;
+    height: 100px;
+    text-align:left;
+    float:left;
+}
+
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}

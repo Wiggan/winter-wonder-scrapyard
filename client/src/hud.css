@@ -1,0 +1,32 @@
+.self {
+	border: 2px solid white;
+	padding: 10px;
+}
+
+.name {
+	font-size: 24px;
+    text-transform:capitalize;
+}
+.scrap {
+    font-size: 18px;
+}
+.controls {
+border: 2px solid white;
+	padding: 10px;
+	color: grey;
+    font-size: 12px;
+}
+
+.scoreboard {
+	border: 2px solid white;
+	padding: 10px;
+    font-size: 12px;
+	width: 100%;
+}
+.playername {
+	width: 75%;
+    text-transform: capitalize;
+}
+.playerscore {
+	width: 25%;
+}

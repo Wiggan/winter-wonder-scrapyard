@@ -1,0 +1,74 @@
+{
+	"autoResize": true,
+	"height": "600px",
+	"width": "800px",
+	"edges": {
+		"color": "#000000",
+		"chosen": false,
+		"width": 3,
+		"smooth": {
+		  "type": "cubicBezier",
+		  "roundness": 0.9
+		},
+		"arrowStrikethrough": true,
+		"arrows": {
+			"to": {
+				"enabled": false,
+				"scaleFactor": 1.5
+			}
+		}
+	},
+	"nodes": {
+		"shape": "box",
+		"fixed": true,
+		"borderWidth": 3,
+		"labelHighlightBold": false,
+		"widthConstraint": {
+			"minimum": 150,
+			"maximum": 150
+		},
+		"heightConstraint": {
+			"minimum": 50
+		},
+		"color": {
+			"border": "#cec7b7",
+			"background": "#333333",
+			"highlight": {
+				"border": "#cec7b7",
+				"background": "#211d0b"
+			},
+			"hover": {
+				"border": "#cec7b7",
+				"background": "#211d0b"
+			}
+		},
+		"font": {
+		  "size": 12,
+		  "color": "#cccccc",
+		  "multi": true,
+		  "bold": {
+			"size": 16,
+			"mod": "bold",
+			"color": "#dddddd"
+		  }
+		}
+	},
+	"layout": {
+		"improvedLayout": true,
+		"hierarchical": {
+			"enabled": true,
+			"levelSeparation": 250,
+			"nodeSpacing": 100,
+			"treeSpacing": 100,
+			"direction": "LR",
+			"parentCentralization": false,
+			"sortMethod": "hubsize"
+		}
+	},
+	"interaction": {
+		"dragView": false,
+		"selectConnectedEdges": false,
+		"dragNodes": false,
+		"zoomView": false
+	}
+}
