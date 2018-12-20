@@ -299,9 +299,11 @@ class Game extends React.Component {
 			ctx.fillStyle = "rgb(190, 190, 190)";
 			ctx.strokeStyle = "rgb(100, 100, 100)";
 			ctx.translate(scrap.pos[0], scrap.pos[1]);
-			ctx.rotate(Date.now()/100);
-			ctx.fillRect(-2, -2, 4, 4);
-			ctx.strokeRect(-2, -2, 4, 4);
+			ctx.rotate((Date.now() % 1500) / 1500 * 2 * Math.PI);
+			var scale = Math.sin(Date.now() / 500) * 0.2 + 1;
+			ctx.scale(scale, scale);
+			ctx.fillRect(-3, -3, 6, 6);
+			ctx.strokeRect(-3, -3, 6, 6);
 			ctx.restore();
 		});
 	}

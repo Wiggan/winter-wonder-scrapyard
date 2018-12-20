@@ -139,7 +139,7 @@
 		}
 	},
 	"parameters": {
-		"waterDamage": 100,
+		"waterDamage": 50,
 		"roundTime": 50000
 	}
 }

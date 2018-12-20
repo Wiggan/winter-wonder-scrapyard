@@ -63,4 +63,28 @@ module.exports = class ParticleGenerator {
 		}
 		return explosion;
 	}
+	
+	generateGold(pos) {
+		var gold = {
+			birth: Date.now(),
+			particles: [],
+			duration: 1000,
+			progress: 0,
+		};
+		var count = 8;
+		for(var i=0; i<count; i++) {
+			var direction = rad2dir(Math.random()*2*Math.PI);
+			var position = add(copy(pos), mult(copy(direction), getRandomIntInclusive(3, 6)));
+			var brightness = getRandomIntInclusive(128,255);
+			var particle = {
+				radius: getRandomIntInclusive(3, 5),
+				direction: direction,
+				speed: Math.random()*0.5+0.2,
+				pos: position,
+				color: "rgb("+brightness+","+brightness*0.7+",0)",
+			};
+			gold.particles.push(particle);
+		}
+		return gold;
+	}
 }

@@ -51,6 +51,12 @@ io.world = {
 	physicsOn: true,
 };
 
+function setScrapCount(socket, count) {
+	socket.player.hud.scrap = count;
+	socket.emit('hud update', JSON.stringify(socket.player.hud));
+	socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
+}
+
 function getPrerequisiteEdges(id) {
 	return config.shop.edges.filter((edge) => { return edge.to === id });
 }
@@ -148,7 +154,6 @@ function startArenaRound() {
 			clearInterval(io.world.countPlayersAliveInterval);
 			if(alivers.length == 1) {
 				alivers[0].score++;
-				alivers[0].scrap += 5;
 				updatePlayerList()
 			}
 			startNormalRound();
@@ -252,10 +257,7 @@ io.on('connection', function(socket){
 			default:
 				break;
 		}
-		socket.player.hud.scrap = socket.player.hud.scrap - item.cost;
-		console.log(item);
-		socket.emit('hud update', JSON.stringify(socket.player.hud));
-		socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
+		setScrapCount(socket, socket.player.hud.scrap - item.cost);
 	});
 	socket.on('get hud', function(){
 		socket.emit('hud update', JSON.stringify(socket.player.hud));
@@ -462,11 +464,9 @@ app.listen(3000, function(){
 				
 				// Collision with scrap
 				io.world.scraps.map((scrap) => {
-					var pos2 = scrap.pos;
-					if (dist(pos1, pos2) < socket1.player.status.size[0]) {
-						socket1.player.hud.scrap++;
-						socket1.emit('hud update', JSON.stringify(socket1.player.hud));
-						socket1.emit('get shop', JSON.stringify(getCurrentShop(socket1.player)));
+					if (dist(pos1, scrap.pos) < socket1.player.status.size[1]) {
+						setScrapCount(socket1, socket1.player.hud.scrap + 1);
+						io.world.effects.push(particle.generateGold(scrap.pos));
 						scrap.done = true;
 					}
 				});
@@ -587,8 +587,7 @@ app.listen(3000, function(){
 							io.world.effects.push(particle.generateExplosion(socket.player.status.pos));
 							socket.player.status.alive = false;
 							if(!io.world.arena) {
-								socket.player.hud.scrap = 0;
-								socket.emit('hud update', JSON.stringify(socket.player.hud));
+								setScrapCount(socket, 0);
 							}
 							setTimeout(() => {
 								if(!io.world.arena && !socket.player.status.alive) {
@@ -601,17 +600,7 @@ app.listen(3000, function(){
 			});
 			
 			
-			io.world.effects.map((effect) => {
-				var age = Date.now() - effect.birth;
-				effect.progress = age / effect.duration;
-				if(effect.progress >= 1) {
-					effect.done = true;
-				} else {
-					effect.particles.map((particle) => {
-						add(particle.pos, mult(copy(particle.direction), particle.speed));
-					});
-				}
-			});
+			
 			
 			// Collision between projectiles and map elements
 			io.world.projectiles.map((projectile) => {
@@ -623,16 +612,30 @@ app.listen(3000, function(){
 				});
 			});
 			
-			io.world.effects = io.world.effects.filter((effect) => {
-				return effect.done !== true;
-			});
-			io.world.projectiles = io.world.projectiles.filter((projectile) => {
-				return projectile.done !== true;
-			});
-			io.world.scraps = io.world.scraps.filter((scrap) => {
-				return scrap.done !== true;
-			});
+			
 		}
+		
+		io.world.effects.map((effect) => {
+			var age = Date.now() - effect.birth;
+			effect.progress = age / effect.duration;
+			if(effect.progress >= 1) {
+				effect.done = true;
+			} else {
+				effect.particles.map((particle) => {
+					add(particle.pos, mult(copy(particle.direction), particle.speed));
+				});
+			}
+		});
+		
+		io.world.effects = io.world.effects.filter((effect) => {
+			return effect.done !== true;
+		});
+		io.world.projectiles = io.world.projectiles.filter((projectile) => {
+			return projectile.done !== true;
+		});
+		io.world.scraps = io.world.scraps.filter((scrap) => {
+			return scrap.done !== true;
+		});
 	}, 16.6666);
 	setInterval(() => {
 		io.emit('world update', JSON.stringify({
