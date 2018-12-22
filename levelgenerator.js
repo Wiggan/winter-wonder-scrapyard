@@ -7,19 +7,15 @@ var dist = require('vectors/dist')(2);
 var mag = require('vectors/mag')(2);
 var dot = require('vectors/dot')(2);
 var chance = require('chance').Chance();
-
-function getRandomIntInclusive(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive 
-}
-function rad2dir(rad) {
-	return [-Math.sin(rad), Math.cos(rad)];
-}
+require('./utility.js');
 
 module.exports = class LevelGenerator {
 	
-	generate(width, height) {
+	constructor(io) {
+		this.io = io;
+	}
+	
+	generate(width, height, arena) {
 		this.width = width;
 		this.height = height;
 		this.squareSize = 60;
@@ -29,6 +25,11 @@ module.exports = class LevelGenerator {
 		this.smooth();
 		this.explode();
 		this.explode();
+		if(arena) {
+			this.shop = undefined;
+		} else {
+			this.shop = this.addShop();
+		}
 		this.rocks = this.addRocks();
 		
 		return {
@@ -36,11 +37,11 @@ module.exports = class LevelGenerator {
 			grid: this.grid,
 			colors: ["rgb(0, 80, 255)", "rgb(150, 190, 255)", "rgb(50, 50, 50)"],
 			rocks: this.rocks,
+			shop: this.shop
 		}
 	}
 
 	randomFill() {
-		console.log("Running pass 1 with a grid of " + this.cols + "x" + this.rows);
 		this.grid = []
 		for(var x = 0; x < this.cols; x++) {
 			this.grid.push([]);
@@ -126,6 +127,17 @@ module.exports = class LevelGenerator {
 		return rocks;
 	}
 	
+	addShop() {
+		var candidate = [getRandomIntInclusive(Math.floor(this.width/3), 2*Math.floor(this.width/3)), getRandomIntInclusive(Math.floor(this.height/3), 2*Math.floor(this.height/3))];
+		while(this.isInWater(candidate) === true) {
+			candidate = [getRandomIntInclusive(Math.floor(this.width/3), 2*Math.floor(this.width/3)), getRandomIntInclusive(Math.floor(this.height/3), 2*Math.floor(this.height/3))];
+		}
+		return {
+			pos: candidate,
+			radius: 30,
+		};
+	}
+	
 	outsideScreen(pos) {
 		return pos[0] < 0 || pos[0] > this.width || pos[1] < 0 || pos[1] > this.height;
 	}
@@ -153,14 +165,36 @@ module.exports = class LevelGenerator {
 				result = true;
 			}
 		});
+		if(this.shop !== undefined) {
+			if(dist(this.shop.pos, pos) < this.shop.radius*3) {
+				result = true;
+			}
+		}
+		return result;
+	}
+	
+	isCollidingWithPlayers(pos) {
+		var result = false;
+		Object.values(this.io.sockets.sockets).map((socket) => {
+			if(socket.player !== undefined && dist(socket.player.status.pos, pos) < socket.player.status.size[1]*3) {
+				result = true;
+			}
+		});
 		return result;
 	}
 	
 	getCollisionFreePosition() {
 		var candidate = [chance.floating({ min: this.squareSize, max: this.width-this.squareSize }), chance.floating({ min: this.squareSize, max: this.height-this.squareSize })];
-		while(this.isCollidingWithMapElements(candidate) === true || this.isInWater(candidate) === true ) {
+		while(this.isCollidingWithMapElements(candidate) === true || 
+			  this.isInWater(candidate) === true ||
+			  this.isCollidingWithPlayers(candidate) === true) {
 			candidate = [chance.floating({ min: this.squareSize, max: this.width-this.squareSize }), chance.floating({ min: this.squareSize, max: this.height-this.squareSize })];
 		}
 		return candidate;
+	}
+	
+	getInwardRotation(pos) {
+		var a = Math.atan2(this.height/2 - pos[1], this.width/2 - pos[0]) - Math.PI/2;
+		return a;
 	}
 }

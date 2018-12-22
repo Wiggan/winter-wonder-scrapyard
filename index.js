@@ -1,16 +1,3 @@
-var http = require('http');
-var socket = require('socket.io');
-var app = http.createServer();
-var io = socket(app);
-var selfReloadJSON = require('self-reload-json');
-var config = new selfReloadJSON('./config.json');
-var chance = require('chance').Chance();
-var Level = require('./levelgenerator.js');
-var level = new Level();
-
-var Particle = require('./particlegenerator.js');
-var particle = new Particle();
-
 var mult = require('vectors/mult')(2);
 var add = require('vectors/add')(2);
 var sub = require('vectors/sub')(2);
@@ -20,8 +7,32 @@ var lerp = require('vectors/lerp')(2);
 var mag = require('vectors/mag')(2);
 var dot = require('vectors/dot')(2);
 var dist = require('vectors/dist')(2);
-
+require('./utility.js');
 const math = require('mathjs');
+var chance = require('chance').Chance();
+var http = require('http');
+var socket = require('socket.io');
+var app = http.createServer();
+var io = socket(app);
+io.world = {
+	level: {},
+	players: [],
+	projectiles: [],
+	scraps: [],
+	rocks: [],
+	effects: [],
+	gameState: {}
+};
+var selfReloadJSON = require('self-reload-json');
+io.world.config = new selfReloadJSON('./config.json');
+var LevelGenerator = require('./levelgenerator.js');
+io.levelGenerator = new LevelGenerator(io);
+var gameStateMachine = new (require('./gamestatemachine.js'))(io);
+
+var Particle = require('./particlegenerator.js');
+var particle = new Particle();
+
+
 
 var connectionCount = 0;
 
@@ -31,25 +42,14 @@ var KeyEnum = {
 	left: 65,
 	right: 68,
 	brake: 32,
-	boost: 17,
+	boost: 69,
 	fire: 38,
 	towerleft: 37,
 	towerright: 39
 };
 Object.freeze(KeyEnum);
 
-io.world = {
-	level: {},
-	players: [],
-	projectiles: [],
-	scraps: [],
-	rocks: [],
-	effects: [],
-	ranking: [],
-	arena: false,
-	gameOn: false,
-	physicsOn: true,
-};
+
 
 function setScrapCount(socket, count) {
 	socket.player.hud.scrap = count;
@@ -58,11 +58,11 @@ function setScrapCount(socket, count) {
 }
 
 function getPrerequisiteEdges(id) {
-	return config.shop.edges.filter((edge) => { return edge.to === id });
+	return io.world.config.shop.edges.filter((edge) => { return edge.to === id });
 }
 
 function getCurrentShop(player) {
-	shop = JSON.parse(JSON.stringify(config.shop));
+	shop = JSON.parse(JSON.stringify(io.world.config.shop));
 	shop.nodes.map((node) => { 
 		if (player.upgrades.includes(node.id)) {
 			node.owned = true;
@@ -93,113 +93,15 @@ function updateAppearanceDueToKeyEvent(player) {
 	}
 }
 
-function respawnPlayer(player) {
-	player.status.pos = level.getCollisionFreePosition();
-	player.status.vel = [0, 0];
-	player.status.rotation = chance.floating({ min: 0, max: 2*Math.PI });
-	player.status.alive = true;
-	player.status.health = 100;
-}
-
-function doWeHaveAWinner() {
-	var winner = undefined;
-	Object.values(io.sockets.sockets).map((socket) => {
-		if(socket.player.hud.score === 3) {
-			winner = socket.player.hud;
-		}
-	});
-	return winner;
-}
-function startNormalRound() {
-	console.log("Starting normal round!");
-	io.world.physicsOn = false;
-	io.world.arena = false;
-	io.world.scraps = [];
-	io.world.level = level.generate(800, 600);
-	io.emit('new map', JSON.stringify(io.world.level));
-	Object.values(io.sockets.sockets).map((socket) => {
-		respawnPlayer(socket.player);
-	});
-	
-	io.world.scrapInterval = setInterval(() => {
-		if(io.world.scraps.length < 5) {
-			io.world.scraps.push({pos: level.getCollisionFreePosition()});
-		}
-	}, 5000);
-	setTimeout(() => {
-		io.world.physicsOn = true;
-	}, 2000);
-	setTimeout(() => {
-		startArenaRound();
-	}, config.parameters.roundTime);
-}
-
-function startArenaRound() {
-	console.log("Starting arena!");
-	io.world.physicsOn = false;
-	io.world.arena = true;
-	io.world.scraps = [];
-	clearInterval(io.world.scrapInterval);
-	io.world.level = level.generate(800, 600);
-	io.emit('new map', JSON.stringify(io.world.level));
-	Object.values(io.sockets.sockets).map((socket) => {
-		respawnPlayer(socket.player);
-	});
-	io.world.countPlayersAliveInterval = setInterval(() => {
-		var alivers = [];
-		Object.values(io.sockets.sockets).map((socket) => {
-			if(socket.player.status.alive) alivers.push(socket.player.hud);
-		});
-		if(alivers.length <= 1) {
-			clearInterval(io.world.countPlayersAliveInterval);
-			if(alivers.length == 1) {
-				alivers[0].score++;
-				updatePlayerList()
-			}
-			startNormalRound();
-		}
-	}, 1000);
-	setTimeout(() => {
-		io.world.physicsOn = true;
-	}, 2000);
-}
-
-function updatePlayerList() {
-	io.world.ranking = []
-	var readyCount = 0;
-	Object.values(io.sockets.sockets).map((socket) => {
-		io.world.ranking.push(socket.player.hud);
-		if(socket.player.hud.ready) readyCount++;
-		socket.emit('hud update', JSON.stringify(socket.player.hud));
-	});
-	io.world.ranking.sort((a, b) => { return a.score > b.score ? -1 : 1; });
-	io.emit('score update', JSON.stringify(io.world.ranking));
-	
-	if(!io.world.gameOn && readyCount === io.world.ranking.length) {
-		// Start the game!
-		io.world.physicsOn = false;
-		io.world.gameOn = true;
-		console.log("All are ready, game is starting!");
-		Object.values(io.sockets.sockets).map((socket) => {
-			socket.player.stats = Object.assign(socket.player.stats, JSON.parse(JSON.stringify(config.player.stats)));
-			socket.player.status = Object.assign(socket.player.status, JSON.parse(JSON.stringify(config.player.status)));
-			socket.player.hud = Object.assign(socket.player.hud, config.player.hud);
-			socket.player.upgrades = [];
-			socket.emit('hud update', JSON.stringify(socket.player.hud));
-			socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
-		});
-		
-		startNormalRound();
-	}
-}
-
 io.on('connection', function(socket){
 	var playerId = connectionCount++;
-	console.log('user ' + playerId + ' connected');
+	console.log('user ' + playerId + ' connected from ip: ' + socket.handshake.address);
 	socket.on('disconnect', function(){
 		console.log('user disconnected');
 		io.world.players = io.world.players.filter((value) => { return socket.player.status.id !== value.id; });
-		updatePlayerList();
+		io.world.gameState.playerStates = io.world.gameState.playerStates.filter((player) => {
+			return socket.player.hud !== player;
+		});
 	});
 	socket.on('get shop', function(){
 		socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
@@ -207,25 +109,24 @@ io.on('connection', function(socket){
 	socket.on('ready', function(){
 		socket.player.hud.ready = true;
 		socket.emit('hud update', JSON.stringify(socket.player.hud));
-		updatePlayerList();
 	});
 	socket.on('buy', function(id){
-		var item = config.shop.nodes.find((node) => {return node.id == id});
+		var item = io.world.config.shop.nodes.find((node) => {return node.id == id});
 		socket.player.upgrades.push(item.id);
 		switch(item.id) {
 			case 1: // Dubbdäck
 				socket.player.status.dubbs = true;
 				socket.player.status.tiresize = [5, 6];
-				socket.player.stats.grip = 0.9;
+				socket.player.stats.grip = item.grip;
 				break;
 			case 2: // Fri Rotation
 				socket.player.stats.freeRotataion = true;
 				break;
 			case 3: // Bättre svängradie
-				socket.player.stats.rotationSpeed = 0.02;
+				socket.player.stats.rotationSpeed = item.rotationSpeed;
 				break;
 			case 4: // Snabbare motor
-				socket.player.stats.acc = 150;
+				socket.player.stats.acc = item.acc;
 				break;
 			case 5: // Turboskjuts
 				socket.player.stats.boost = true;
@@ -233,7 +134,7 @@ io.on('connection', function(socket){
 			case 6: // Spikdäck
 				socket.player.status.spikes = true;
 				socket.player.status.tiresize = [6, 7];
-				socket.player.stats.grip = 2;
+				socket.player.stats.grip = item.grip;
 				break;
 			case 101: // Kofångare
 				socket.player.stats.bumper = true;
@@ -247,7 +148,7 @@ io.on('connection', function(socket){
 				socket.player.stats.towerRotation = true;
 				break;
 			case 203: // Servokanontorn
-				socket.player.stats.towerRotationSpeed = 4;
+				socket.player.stats.towerRotationSpeed = item.towerRotationSpeed;
 				break;
 			case 204: // Trippelraket
 				socket.player.status.tripple = true;
@@ -299,18 +200,19 @@ io.on('connection', function(socket){
 		}
 	});
 	var color = chance.color({format: 'hex'});
+	var pos = io.levelGenerator.getCollisionFreePosition();
+	var rotation = io.levelGenerator.getInwardRotation(pos);
 	socket.player = {
 		keysDown: [],
 		status: {
 			id: playerId,
-			pos: level.getCollisionFreePosition(),
+			pos: pos,
 			vel: [0, 0],
-			rotation: chance.floating({ min: 0, max: 2*Math.PI }),
+			rotation: rotation,
 			towerrotation: 0,
 			turning: 0,
 			driving: 0,
 			alive: true,
-			health: 100,
 
 			size: [14, 20],
 			tiresize: [4, 6],
@@ -346,54 +248,33 @@ io.on('connection', function(socket){
 		},
 		hud: {
 			name: chance.prefix({ full: false }) + " " + chance.word({ syllables: 2 }),
-			scrap: 10,
+			scrap: 100,
+			health: 100,
 			color: color,
 			score: 0,
 			ready: false,
+			notification: undefined,
 		},
 		upgrades: []
 	};
-	
 	io.world.players.push(socket.player.status);
+	io.world.gameState.playerStates.push(socket.player.hud);
 	socket.emit('new map', JSON.stringify(io.world.level));
 	socket.emit('hud update', JSON.stringify(socket.player.hud));
-	updatePlayerList();
+	socket.emit('game update', JSON.stringify(io.world.gameState));
 });
 
-function rad2dir(rad) {
-	return [-Math.sin(rad), Math.cos(rad)];
-}
-
-function epsilonGuard(number) {
-	return (Math.round(( number )*10000))/10000
-}
-
-function angle(a, b) {
-	var angle = Math.acos(epsilonGuard(dot(a, b) / (mag(a) * mag(b))));
-	if(isNaN(angle)) {
-		console.log(dot(a, b));
-		console.log(epsilonGuard(dot(a, b)));
-		
-		console.log(mag(a) * mag(b));
-		console.log(epsilonGuard(mag(a) * mag(b)));
-	}
-	return angle;
-}
-
-function scalarProjection(a, b) {
-	return mag(a)*Math.cos(angle(a, b));
-}
 
 
 
 app.listen(3000, function(){
     console.log('listening on *:3000');
-	io.world.level = level.generate(800, 600);
-	io.emit('new map', JSON.stringify(io.world.level));
+	
+	gameStateMachine.startLobby();
 	
     setInterval(() => {
 		var elapsed = 0.016666; // Fix this
-		if(io.world.physicsOn) {
+		if(io.world.gameState.physicsOn) {
 			// Collision
 			Object.values(io.sockets.sockets).map((socket1) => {
 				// fast forward inner loop, to avoid duplicate pairs.
@@ -403,14 +284,16 @@ app.listen(3000, function(){
 					if(socket1 == socket2) { ff = true; };
 					if(ff) {
 						var pos2 = socket2.player.status.pos;
-						if (socket1 != socket2 && dist(pos1, pos2) < socket2.player.status.size[0]*2) {
-							console.log("Krock!");
+						var distance = dist(pos1, pos2);
+						var radii = socket2.player.status.size[0]*2;
+						if (socket1 != socket2 && socket1.player.status.alive===true && socket2.player.status.alive===true && distance < radii) {
 							var direction = norm(sub(copy(pos2), pos1));
 							var vel1 = copy(socket1.player.status.vel);
 							var vel2 = copy(socket2.player.status.vel);
-							
+							var impact1 = [0, 0];
+							var impact2 = [0, 0];
 							if(mag(vel1) > 0.1) {
-								var impact1 = mult(copy(direction), scalarProjection(vel1, copy(direction)));
+								impact1 = mult(copy(direction), scalarProjection(vel1, copy(direction)));
 								sub(socket1.player.status.vel, impact1);
 								if(socket1.player.stats.bumper && Math.abs(angle(impact1, rad2dir(socket1.player.status.rotation))) < 0.8) {
 									mult(impact1, socket1.player.stats.bumperFactor);
@@ -419,13 +302,20 @@ app.listen(3000, function(){
 							}
 							if (mag(vel2) > 0.1) {
 								var opposite = mult(copy(direction), -1);
-								var impact2 = mult(copy(opposite), scalarProjection(vel2, opposite));
+								impact2 = mult(copy(opposite), scalarProjection(vel2, opposite));
 								sub(socket2.player.status.vel, impact2);
 								if(socket2.player.stats.bumper && Math.abs(angle(impact2, rad2dir(socket2.player.status.rotation))) < 0.8) {
 									mult(impact2, socket2.player.stats.bumperFactor);
 								}
 								add(socket1.player.status.vel, impact2);
 							}
+							
+							moveback1 = (radii - distance) * mag(impact1) / (mag(impact1) + mag(impact2));
+							moveback2 = -(radii - distance) * mag(impact2) / (mag(impact1) + mag(impact2));
+							
+							sub(socket1.player.status.pos, mult(copy(direction), moveback1));
+							sub(socket2.player.status.pos, mult(copy(direction), moveback2));
+							
 							if (mag(vel1) + mag(vel2) > 10) {
 								io.world.effects.push(particle.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
 							}
@@ -454,7 +344,6 @@ app.listen(3000, function(){
 				io.world.projectiles.map((projectile) => {
 					var pos2 = projectile.pos;
 					if (socket1.player.status.id != projectile.owner && dist(pos1, pos2) < socket1.player.status.size[0]) {
-						console.log("Träff!");
 						var direction = norm(copy(projectile.vel));
 						add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
 						projectile.done = true;
@@ -581,19 +470,31 @@ app.listen(3000, function(){
 					add(socket.player.status.pos, mult(copy(socket.player.status.vel), elapsed));
 					
 					// Check if player is in water
-					if(level.isInWater(socket.player.status.pos)) {
-						socket.player.status.health -= elapsed * config.parameters.waterDamage;
-						if(socket.player.status.health <= 0) {
+					if(io.levelGenerator.isInWater(socket.player.status.pos)) {
+						socket.player.hud.health -= elapsed * io.world.config.parameters.waterDamage;
+						socket.emit('hud update', JSON.stringify(socket.player.hud));
+						if(socket.player.hud.health <= 0) {
 							io.world.effects.push(particle.generateExplosion(socket.player.status.pos));
 							socket.player.status.alive = false;
-							if(!io.world.arena) {
-								setScrapCount(socket, 0);
+							switch(io.world.gameState.state) {
+								case StateEnum.arena:
+									var alivers = 0;
+									Object.values(io.sockets.sockets).map((socket2) => {
+										if(socket2.player.status.alive) alivers++;
+									});
+									setScrapCount(socket, socket.player.hud.scrap + alivers);
+									console.log("Rewarding player " + socket.player.hud.name + " " + alivers + " scrap");
+								break;
+								case StateEnum.normal:
+									setScrapCount(socket, 0);
+								case StateEnum.lobby:
+									setTimeout(() => {
+										if(!socket.player.status.alive && io.world.gameState.state != StateEnum.arena) {
+											gameStateMachine.respawnPlayer(socket);
+										}
+									}, 2000);								
+								break;
 							}
-							setTimeout(() => {
-								if(!io.world.arena && !socket.player.status.alive) {
-									respawnPlayer(socket.player);
-								}
-							}, 2000);
 						}
 					}
 				}

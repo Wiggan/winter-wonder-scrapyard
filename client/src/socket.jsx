@@ -8,6 +8,10 @@ class Socket extends React.Component {
 		console.log("Trying to connect to server on ip: " + window.location.hostname);
 		this.socket = openSocket('http://' + window.location.hostname + ':3000');
 		//this.socket = openSocket('localhost:3000');
+		this.gameUpdateCallbacks = [];
+		this.hudUpdateCallbacks = [];
+		this.socket.on('game update', this.onGameUpdate.bind(this));
+		this.socket.on('hud update', this.onHudUpdate.bind(this));
 	}
 
 	getShop() {
@@ -20,11 +24,11 @@ class Socket extends React.Component {
 		this.socket.emit('buy', id);
 	}
 	
-	setOnHudUpdate(callback) {
-		this.socket.on('hud update', callback);
+	addOnHudUpdate(callback) {
+		this.hudUpdateCallbacks.push(callback);
 	}
-	setOnScoreUpdate(callback) {
-		this.socket.on('score update', callback);
+	addOnGameUpdate(callback) {
+		this.gameUpdateCallbacks.push(callback);
 	}
 	getHud() {
 		this.socket.emit('get hud');
@@ -44,6 +48,13 @@ class Socket extends React.Component {
 	}
 	keyup(keyCode) {
 		this.socket.emit('keyup', keyCode);
+	}
+	
+	onGameUpdate(msg) {
+		this.gameUpdateCallbacks.map((callback) => { callback(msg) });
+	}
+	onHudUpdate(msg) {
+		this.hudUpdateCallbacks.map((callback) => { callback(msg) });
 	}
 }
 

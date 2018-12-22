@@ -4,6 +4,7 @@
 }
 
 .name {
+	text-shadow: 2px 1px grey ;
 	font-size: 24px;
     text-transform:capitalize;
 }
@@ -20,13 +21,18 @@ border: 2px solid white;
 .scoreboard {
 	border: 2px solid white;
 	padding: 10px;
-    font-size: 12px;
+    font-size: 14px;
+	
 	width: 100%;
 }
 .playername {
+	text-shadow: 1px 1px grey ;
 	width: 75%;
     text-transform: capitalize;
 }
 .playerscore {
 	width: 25%;
+}
+th {
+	text-align: left;
 }

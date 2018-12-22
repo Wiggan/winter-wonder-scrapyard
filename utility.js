@@ -1,0 +1,37 @@
+var mult = require('vectors/mult')(2);
+var add = require('vectors/add')(2);
+var sub = require('vectors/sub')(2);
+var copy = require('vectors/copy')(2);
+var norm = require('vectors/normalize')(2);
+var dist = require('vectors/dist')(2);
+var mag = require('vectors/mag')(2);
+var dot = require('vectors/dot')(2);
+
+global.rad2dir = function(rad) {
+	return [-Math.sin(rad), Math.cos(rad)];
+}
+
+global.epsilonGuard = function(number) {
+	return (Math.round(( number )*10000))/10000
+}
+
+global.angle = function(a, b) {
+	var angle = Math.acos(epsilonGuard(dot(a, b) / (mag(a) * mag(b))));
+	if(isNaN(angle)) {
+		console.log(dot(a, b));
+		console.log(epsilonGuard(dot(a, b)));
+		console.log(mag(a) * mag(b));
+		console.log(epsilonGuard(mag(a) * mag(b)));
+	}
+	return angle;
+}
+
+global.scalarProjection = function(a, b) {
+	return mag(a)*Math.cos(angle(a, b));
+}
+
+global.getRandomIntInclusive = function(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}

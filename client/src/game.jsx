@@ -26,6 +26,8 @@ class Game extends React.Component {
 				projectiles: [],
 				scraps: [],
 				effects: [],
+				msg: "",
+				notification: undefined,
 			}
 		}; 
 	}
@@ -175,13 +177,16 @@ class Game extends React.Component {
 		ctx.fillStyle = color;
 		ctx.fillRect(-size[0]/2, -size[1]/2, size[0], size[1]);
 		
-		ctx.globalAlpha = 0.3;
+		ctx.globalAlpha = 0.5;
 		ctx.fillStyle = "white";
+		ctx.strokeStyle = "black";
 		ctx.beginPath();
 		ctx.moveTo(-size[0]/2, -size[1]/2);
 		ctx.lineTo(0, 0);
 		ctx.lineTo(size[0]/2, -size[1]/2);
 		ctx.fill();
+		ctx.globalAlpha = 0.7;
+		ctx.stroke();
 		ctx.globalAlpha = 1;
 	}
 	
@@ -293,6 +298,20 @@ class Game extends React.Component {
 		return pos[0] < 0 || pos[0] > width || pos[1] < 0 || pos[1] > height;
 	}
 	
+	drawShop(ctx) {
+		if(this.state.world.level  !== undefined && this.state.world.level.shop !== undefined) {
+			ctx.save();
+			ctx.translate(this.state.world.level.shop.pos[0], this.state.world.level.shop.pos[1]);
+			ctx.fillStyle = "rgb(100, 100, 190)";
+			ctx.strokeStyle = "rgb(50, 50, 50)";
+			ctx.beginPath();
+			ctx.arc(0, 0, this.state.world.level.shop.radius, 0, 2 * Math.PI, false);
+			ctx.fill();
+			ctx.stroke();
+			ctx.restore();
+		}
+	}
+	
 	drawScraps(ctx) {
 		this.state.world.scraps.map((scrap) => {
 			ctx.save();
@@ -334,6 +353,29 @@ class Game extends React.Component {
 		ctx.globalAlpha = 1;
 	}
 	
+	drawNotification(ctx) {
+		if(this.state.world.notification !== undefined) {
+			ctx.globalAlpha = (Date.now() % 500) / 500;
+			ctx.strokeStyle = "red";
+			ctx.beginPath();
+			ctx.arc(this.state.world.notification.pos[0], 
+					this.state.world.notification.pos[1], 
+					this.state.world.notification.radius - (Date.now() % 500) / 500 * 5, 
+					0, 2 * Math.PI, false);
+			ctx.stroke();
+			ctx.globalAlpha = 1;
+		}
+	}
+	
+	drawMessage(ctx) {
+		ctx.font = "30px Arial";
+		ctx.fillStyle = "red";
+		ctx.strokeStyle = "black";
+		ctx.textAlign = "center";
+		ctx.fillText(this.state.world.msg, width/2, height/2);
+		ctx.strokeText(this.state.world.msg, width/2, height/2);
+	}
+	
 	update() {
 		var ctx = this.canvas.getContext("2d");
 		ctx.clearRect(0, 0, width, height);
@@ -341,9 +383,12 @@ class Game extends React.Component {
 		
 		this.drawMap(ctx);
 		this.drawPlayers(ctx, ctx2);
+		this.drawShop(ctx);
 		this.drawScraps(ctx);
 		this.drawProjectiles(ctx);
 		this.drawEffects(ctx);
+		this.drawNotification(ctx);
+		this.drawMessage(ctx);
 	}
 	
 	keydown(e) {
@@ -381,10 +426,21 @@ class Game extends React.Component {
 		});
 		
 	}
+	onGameUpdate(msg) {
+		var game = JSON.parse(msg);
+		this.state.world.msg = game.msg;
+		this.setState(this.state);
+	}
+	onHudUpdate(hud) {
+		this.state.world.notification = JSON.parse(hud).notification;
+		this.setState(this.state);
+	} 
 	
 	componentDidMount(){
 		Socket.setOnWorldUpdate(this.onWorldUpdate.bind(this));
-		Socket.setOnNewMap(this.onNewMap.bind(this))
+		Socket.setOnNewMap(this.onNewMap.bind(this));
+		Socket.addOnGameUpdate(this.onGameUpdate.bind(this));
+		Socket.addOnHudUpdate(this.onHudUpdate.bind(this));
 		window.addEventListener('keydown', this.keydown, true);
 		window.addEventListener('keyup', this.keyup, true);
 		var intervalId = setInterval(this.update.bind(this), 16.666);
