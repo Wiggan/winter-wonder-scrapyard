@@ -138,6 +138,7 @@
 			"tripple": false
 		},
 		"hud": {
+			"shopping": false,
 			"scrap": 0,
 			"health": 100,
 			"score": 0
@@ -145,7 +146,7 @@
 	},
 	"parameters": {
 		"waterDamage": 50,
-		"roundTime": 6000,
-		"winnerScore": 1
+		"roundTime": 60000,
+		"winnerScore": 3
 	}
 }

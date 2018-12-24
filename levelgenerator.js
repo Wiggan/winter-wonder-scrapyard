@@ -25,12 +25,13 @@ module.exports = class LevelGenerator {
 		this.smooth();
 		this.explode();
 		this.explode();
+		this.rocks = [];
 		if(arena) {
 			this.shop = undefined;
 		} else {
 			this.shop = this.addShop();
 		}
-		this.rocks = this.addRocks();
+		this.addRocks();
 		
 		return {
 			squareSize: this.squareSize,
@@ -109,28 +110,38 @@ module.exports = class LevelGenerator {
 	
 	addRocks() {
 		var rockClusterCount = getRandomIntInclusive(4, 6);
-		var rocks = [];
 		for(var i = 0; i < rockClusterCount; i++) {
-			rocks.push({
-				pos: [getRandomIntInclusive(100, this.width-100), getRandomIntInclusive(50, this.height-50)],
+			this.rocks.push({
+				pos: this.getCollisionFreePosition(),
 				radius: getRandomIntInclusive(15, 20),
 			});
 			var rockCount = getRandomIntInclusive(5, 10);
 			for(var j = 1; j < rockCount; j++) {
-				var pos = add(mult(rad2dir(Math.random() * 2 * Math.PI), rocks[rocks.length-1].radius*2), rocks[rocks.length-1].pos);
-				rocks.push({
+				var pos = add(mult(rad2dir(Math.random() * 2 * Math.PI), this.rocks[this.rocks.length-1].radius*2), this.rocks[this.rocks.length-1].pos);
+				this.rocks.push({
 					pos: pos,
 					radius: getRandomIntInclusive(10-j, 15-j),
 				});
 			}
 		}
-		return rocks;
 	}
 	
 	addShop() {
 		var candidate = [getRandomIntInclusive(Math.floor(this.width/3), 2*Math.floor(this.width/3)), getRandomIntInclusive(Math.floor(this.height/3), 2*Math.floor(this.height/3))];
 		while(this.isInWater(candidate) === true) {
 			candidate = [getRandomIntInclusive(Math.floor(this.width/3), 2*Math.floor(this.width/3)), getRandomIntInclusive(Math.floor(this.height/3), 2*Math.floor(this.height/3))];
+		}
+		for(var i=0; i<5; i++) {
+			this.rocks.push({
+				pos: add(copy(candidate), mult(rad2dir(Math.PI + Math.PI/10*i + Math.random()*0.2), getRandomIntInclusive(40, 50))),
+				radius: getRandomIntInclusive(5, 15),
+			});		
+		}
+		for(var i=0; i<4; i++) {
+			this.rocks.push({
+				pos: add(copy(candidate), mult(rad2dir(Math.PI/10*i + Math.random()*0.2), getRandomIntInclusive(40, 50))),
+				radius: getRandomIntInclusive(5, 15),
+			});		
 		}
 		return {
 			pos: candidate,

@@ -22,7 +22,7 @@ class Shop extends React.Component {
 				edges: this.state.edges
 			};
 			return (
-				<div className="canvas">
+				<div id="shop" className="canvas">
 					<Graph id="shopgraph" graph={graph} options={options} events={{}} ref={node => this.network = node} />
 				</div>
 			);

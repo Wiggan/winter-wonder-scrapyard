@@ -87,4 +87,27 @@ module.exports = class ParticleGenerator {
 		}
 		return gold;
 	}
+	
+	generateScrapSpawn(pos, count) {
+		var gold = {
+			birth: Date.now(),
+			particles: [],
+			duration: 700,
+			progress: 0,
+		};
+		for(var i=0; i<count; i++) {
+			var direction = rad2dir(Math.random()*2*Math.PI);
+			var position = add(copy(pos), mult(copy(direction), getRandomIntInclusive(3, 5)));
+			var brightness = getRandomIntInclusive(180,230);
+			var particle = {
+				radius: getRandomIntInclusive(4, 6),
+				direction: direction,
+				speed: Math.random()*0.6+0.2,
+				pos: position,
+				color: "rgb("+brightness+","+brightness*0.9+",0)",
+			};
+			gold.particles.push(particle);
+		}
+		return gold;
+	}
 }

@@ -135,7 +135,9 @@ module.exports = class GameStateMachine {
 		
 		this.io.world.scrapInterval = setInterval(() => {
 			if(this.io.world.scraps.length < 10) {
-				this.io.world.scraps.push({pos: this.io.levelGenerator.getCollisionFreePosition()});
+				var pos = this.io.levelGenerator.getCollisionFreePosition();
+				this.io.world.effects.push(this.io.particleGenerator.generateScrapSpawn(pos, 5));
+				this.io.world.scraps.push({pos: pos});
 			}
 		}, 4000);
 		
@@ -152,7 +154,7 @@ module.exports = class GameStateMachine {
 		this.io.world.scraps = [];
 		this.io.world.projectiles = [];
 		clearInterval(this.io.world.scrapInterval);
-		this.io.world.level = this.io.levelGenerator.generate(800, 600);
+		this.io.world.level = this.io.levelGenerator.generate(800, 600, true);
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
 		Object.values(this.io.sockets.sockets).map((socket) => {
 			this.respawnPlayer(socket);

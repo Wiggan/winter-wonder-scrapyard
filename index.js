@@ -30,7 +30,7 @@ io.levelGenerator = new LevelGenerator(io);
 var gameStateMachine = new (require('./gamestatemachine.js'))(io);
 
 var Particle = require('./particlegenerator.js');
-var particle = new Particle();
+io.particleGenerator = new Particle();
 
 
 
@@ -251,6 +251,7 @@ io.on('connection', function(socket){
 			scrap: 100,
 			health: 100,
 			color: color,
+			shopping: false,
 			score: 0,
 			ready: false,
 			notification: undefined,
@@ -317,7 +318,7 @@ app.listen(3000, function(){
 							sub(socket2.player.status.pos, mult(copy(direction), moveback2));
 							
 							if (mag(vel1) + mag(vel2) > 10) {
-								io.world.effects.push(particle.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
+								io.world.effects.push(io.particleGenerator.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
 							}
 							
 						}
@@ -334,7 +335,7 @@ app.listen(3000, function(){
 						sub(socket1.player.status.vel, component);
 						sub(socket1.player.status.pos, mult(norm(copy(component)), radii - distance));
 						if(mag(component) > 100) {
-							io.world.effects.push(particle.generateSmoke(add(copy(rock.pos), mult(copy(direction), rock.radius)),mag(component)/300));
+							io.world.effects.push(io.particleGenerator.generateSmoke(add(copy(rock.pos), mult(copy(direction), rock.radius)),mag(component)/300));
 							
 						}
 					}
@@ -347,7 +348,7 @@ app.listen(3000, function(){
 						var direction = norm(copy(projectile.vel));
 						add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
 						projectile.done = true;
-						io.world.effects.push(particle.generateExplosion(projectile.pos));
+						io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));
 					}
 				});
 				
@@ -355,14 +356,30 @@ app.listen(3000, function(){
 				io.world.scraps.map((scrap) => {
 					if (dist(pos1, scrap.pos) < socket1.player.status.size[1]) {
 						setScrapCount(socket1, socket1.player.hud.scrap + 1);
-						io.world.effects.push(particle.generateGold(scrap.pos));
+						io.world.effects.push(io.particleGenerator.generateGold(scrap.pos));
 						scrap.done = true;
 					}
 				});
 				
+				// Is shopping?
+				if(io.world.level.shop !== undefined) {
+					if(dist(pos1, io.world.level.shop.pos) < io.world.level.shop.radius) {
+						if(socket1.player.hud.shopping === false) {
+							socket1.player.hud.shopping = true;
+							socket1.player.hud.health = 100;
+							socket1.player.status.vel = [0, 0];
+							socket1.player.status.pos = copy(io.world.level.shop.pos);
+							socket1.emit('hud update', JSON.stringify(socket1.player.hud));
+						}
+					} else if(socket1.player.hud.shopping === true) {
+						socket1.player.hud.shopping = false;
+						socket1.emit('hud update', JSON.stringify(socket1.player.hud));
+					}
+				}
 				
 			});
 			
+			// Move projectiles and kill them if too far away
 			io.world.projectiles.map((projectile) => {
 				add(projectile.pos, mult(copy(projectile.vel), elapsed));
 				if (mag(projectile.pos) > 2000) {
@@ -391,7 +408,7 @@ app.listen(3000, function(){
 							socket.player.stats.boostCooldown = true;
 							add(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.boostForce));
 							setTimeout(function(){ socket.player.stats.boostCooldown = false; }, socket.player.stats.boostCooldownTime);
-							io.world.effects.push(particle.generateExplosion(sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), socket.player.status.size[1]))));
+							io.world.effects.push(io.particleGenerator.generateExplosion(sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), socket.player.status.size[1]))));
 						}
 					}
 					if(socket.player.keysDown.includes(KeyEnum.towerleft) && socket.player.stats.towerRotation) {
@@ -474,7 +491,7 @@ app.listen(3000, function(){
 						socket.player.hud.health -= elapsed * io.world.config.parameters.waterDamage;
 						socket.emit('hud update', JSON.stringify(socket.player.hud));
 						if(socket.player.hud.health <= 0) {
-							io.world.effects.push(particle.generateExplosion(socket.player.status.pos));
+							io.world.effects.push(io.particleGenerator.generateExplosion(socket.player.status.pos));
 							socket.player.status.alive = false;
 							switch(io.world.gameState.state) {
 								case StateEnum.arena:
@@ -486,7 +503,17 @@ app.listen(3000, function(){
 									console.log("Rewarding player " + socket.player.hud.name + " " + alivers + " scrap");
 								break;
 								case StateEnum.normal:
+									var scrapCountAtDeath = socket.player.hud.scrap;
 									setScrapCount(socket, 0);
+									setTimeout(() => {
+										if(io.world.gameState.state != StateEnum.arena) {
+											var scrapPos = io.levelGenerator.getCollisionFreePosition();
+											io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, scrapCountAtDeath*5));
+											for(var i=0; i<scrapCountAtDeath; i++) {
+												io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-3, 3), scrapPos[1] - getRandomIntInclusive(-3, 3)]});
+											}
+										}
+									}, 1000);
 								case StateEnum.lobby:
 									setTimeout(() => {
 										if(!socket.player.status.alive && io.world.gameState.state != StateEnum.arena) {
@@ -508,7 +535,7 @@ app.listen(3000, function(){
 				io.world.level.rocks.map((rock) => {
 					if (dist(projectile.pos, rock.pos) < rock.radius) {
 						projectile.done = true;
-						io.world.effects.push(particle.generateExplosion(projectile.pos));					
+						io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));					
 					}
 				});
 			});

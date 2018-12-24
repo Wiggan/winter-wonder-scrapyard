@@ -1,5 +1,6 @@
 import React from 'react';
 import Socket from './socket'
+import Shop from './shop'
 import './game.css'
 
 
@@ -39,6 +40,7 @@ class Game extends React.Component {
 				<canvas className="canvas" width={width} height={height} ref={node => this.bgcanvas = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.mapcanvas = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.canvas = node} ></canvas>
+				<Shop ref={node => this.shop = node}/>
 			</div>
 		);
     }
@@ -302,12 +304,24 @@ class Game extends React.Component {
 		if(this.state.world.level  !== undefined && this.state.world.level.shop !== undefined) {
 			ctx.save();
 			ctx.translate(this.state.world.level.shop.pos[0], this.state.world.level.shop.pos[1]);
-			ctx.fillStyle = "rgb(100, 100, 190)";
+			ctx.fillStyle = "rgb(100, 180, 250)";
 			ctx.strokeStyle = "rgb(50, 50, 50)";
 			ctx.beginPath();
 			ctx.arc(0, 0, this.state.world.level.shop.radius, 0, 2 * Math.PI, false);
 			ctx.fill();
 			ctx.stroke();
+			ctx.fillStyle = "rgb(130, 170, 240)";
+			ctx.beginPath();
+			ctx.arc(0, 0, this.state.world.level.shop.radius/3, 0, 2 * Math.PI, false);
+			ctx.fill();
+			ctx.stroke();
+			const boxCount = 6;
+			const boxSize = 16;
+			for(var i = 0; i<boxCount; i++) {
+				ctx.rotate(Math.PI*2/boxCount);
+				ctx.fillRect(this.state.world.level.shop.radius-boxSize/2-4, -boxSize/2, boxSize, boxSize);
+				ctx.strokeRect(this.state.world.level.shop.radius-boxSize/2-4, -boxSize/2, boxSize, boxSize);
+			}
 			ctx.restore();
 		}
 	}
@@ -431,12 +445,15 @@ class Game extends React.Component {
 		this.state.world.msg = game.msg;
 		this.setState(this.state);
 	}
-	onHudUpdate(hud) {
-		this.state.world.notification = JSON.parse(hud).notification;
+	onHudUpdate(msg) {
+		var hud = JSON.parse(msg);
+		this.state.world.notification = hud.notification;
+		this.shop.setVisible(hud.shopping);
 		this.setState(this.state);
 	} 
 	
 	componentDidMount(){
+		console.log(this.shop);
 		Socket.setOnWorldUpdate(this.onWorldUpdate.bind(this));
 		Socket.setOnNewMap(this.onNewMap.bind(this));
 		Socket.addOnGameUpdate(this.onGameUpdate.bind(this));
