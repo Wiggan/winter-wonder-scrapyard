@@ -11,6 +11,10 @@ global.rad2dir = function(rad) {
 	return [-Math.sin(rad), Math.cos(rad)];
 }
 
+global.dir2rad = function(dir) {
+	return Math.atan2(dir[1], dir[0]) - Math.PI/2;
+}
+
 global.epsilonGuard = function(number) {
 	return (Math.round(( number )*10000))/10000
 }

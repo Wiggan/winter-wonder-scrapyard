@@ -466,6 +466,11 @@ app.listen(3000, function(){
 						var sideComponent = sub(copy(socket.player.status.vel), forwardComponent);
 						sub(force, mult(sideComponent, socket.player.stats.grip));
 						
+						if(mag(sideComponent) > 30) {
+							if(Date.now() % 100 < 20) {
+								io.world.effects.push(io.particleGenerator.generateDust(socket.player.status.pos, sideComponent));
+							}
+						}
 						
 						// Handle rotation
 						if(socket.player.keysDown.includes(KeyEnum.left)) {
@@ -510,7 +515,7 @@ app.listen(3000, function(){
 											var scrapPos = io.levelGenerator.getCollisionFreePosition();
 											io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, scrapCountAtDeath*5));
 											for(var i=0; i<scrapCountAtDeath; i++) {
-												io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-3, 3), scrapPos[1] - getRandomIntInclusive(-3, 3)]});
+												io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-6, 6), scrapPos[1] - getRandomIntInclusive(-6, 6)]});
 											}
 										}
 									}, 1000);

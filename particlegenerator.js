@@ -110,4 +110,29 @@ module.exports = class ParticleGenerator {
 		}
 		return gold;
 	}
+	
+	generateDust(pos, direction) {
+		var dust = {
+			birth: Date.now(),
+			particles: [],
+			duration: 200,
+			progress: 0,
+		};
+		var count = getRandomIntInclusive(2, 3);
+		var rotation = dir2rad(direction);
+		for(var i=0; i<count; i++) {
+			var particleDir = rad2dir(rotation + (Math.random() - 0.5)*3);
+			var position = add(copy(pos), mult(copy(particleDir), getRandomIntInclusive(10, 15)));
+			var brightness = getRandomIntInclusive(100,250);
+			var particle = {
+				radius: getRandomIntInclusive(2, 3),
+				direction: particleDir,
+				speed: 0.5,
+				pos: position,
+				color: "rgb("+brightness*0.8+","+brightness*0.8+","+brightness+")",
+			};
+			dust.particles.push(particle);
+		}
+		return dust;
+	}
 }
