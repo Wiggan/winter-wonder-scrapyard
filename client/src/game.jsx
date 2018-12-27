@@ -36,6 +36,8 @@ class Game extends React.Component {
 	render() {
 		return (
 			<div>
+				<canvas className="canvas" width={width} height={height} ref={node => this.backbuffer1 = node} ></canvas>
+				<canvas className="canvas" width={width} height={height} ref={node => this.tracecanvas2 = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.tracecanvas = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.bgcanvas = node} ></canvas>
 				<canvas className="canvas" width={width} height={height} ref={node => this.mapcanvas = node} ></canvas>
@@ -46,6 +48,16 @@ class Game extends React.Component {
     }
 	
 	drawMap(ctx) {
+		var bb1 = this.backbuffer1.getContext("2d");
+		var ctx2 = this.tracecanvas2.getContext("2d");
+		bb1.clearRect(0, 0, width, height);
+		bb1.drawImage(this.tracecanvas2, 0, 0);
+		ctx2.clearRect(0, 0, width, height);
+		ctx2.globalAlpha = 0.82;
+		ctx2.drawImage(this.backbuffer1, 0, 0);
+		ctx2.globalAlpha = 1.0;
+		
+	
 		var origShadowColor = ctx.shadowColor;
 		ctx.shadowColor = "rgb(150, 190, 255)";
 		ctx.shadowBlur = 4;
@@ -56,7 +68,10 @@ class Game extends React.Component {
 		ctx.globalAlpha = 0.2;
 		ctx.drawImage(this.tracecanvas, 0, 0);
 		ctx.globalAlpha = 1.0;
+		ctx.drawImage(this.tracecanvas2, 0, 0);
 		ctx.globalCompositeOperation = "source-over";
+	
+		
 		ctx.restore();
 	}
 	
@@ -227,7 +242,7 @@ class Game extends React.Component {
 		ctx.restore();
 	}
 	
-	drawPlayers(ctx, ctx2) {
+	drawPlayers(ctx, ctx2, ctx3) {
 		this.state.world.players.map((player) => {
 			if(player.alive) {
 				ctx.save();
@@ -243,6 +258,16 @@ class Game extends React.Component {
 				ctx2.shadowBlur = 3;
 				this.drawTires(ctx2, player.size, [player.tiresize[0]-3,player.tiresize[1]-3], false, false, player.driving, player.turning);
 				ctx2.restore();
+				
+				ctx3.save();
+				ctx3.translate(player.pos[0], player.pos[1]);
+				ctx3.rotate(player.rotation);
+				ctx3.globalAlpha = 1;
+				
+				ctx3.shadowColor = 'blue';
+				ctx3.shadowBlur = 3;
+				this.drawTires(ctx3, player.size, [player.tiresize[0]-3,player.tiresize[1]-3], false, false, player.driving, player.turning);
+				ctx3.restore();
 				
 				this.drawBody(ctx, player.size, player.color);
 				this.drawTires(ctx, player.size, player.tiresize, player.dubbs, player.spikes, player.driving, player.turning);
@@ -369,12 +394,12 @@ class Game extends React.Component {
 	
 	drawNotification(ctx) {
 		if(this.state.world.notification !== undefined) {
-			ctx.globalAlpha = (Date.now() % 500) / 500;
+			ctx.globalAlpha = 1 - (Date.now() % 500) / 500;
 			ctx.strokeStyle = "red";
 			ctx.beginPath();
 			ctx.arc(this.state.world.notification.pos[0], 
 					this.state.world.notification.pos[1], 
-					this.state.world.notification.radius - (Date.now() % 500) / 500 * 5, 
+					this.state.world.notification.radius - (Date.now() % 500) / 500 * this.state.world.notification.radius, 
 					0, 2 * Math.PI, false);
 			ctx.stroke();
 			ctx.globalAlpha = 1;
@@ -393,10 +418,9 @@ class Game extends React.Component {
 	update() {
 		var ctx = this.canvas.getContext("2d");
 		ctx.clearRect(0, 0, width, height);
-		var ctx2 = this.tracecanvas.getContext("2d");
 		
 		this.drawMap(ctx);
-		this.drawPlayers(ctx, ctx2);
+		this.drawPlayers(ctx, this.tracecanvas.getContext("2d"), this.tracecanvas2.getContext("2d"));
 		this.drawShop(ctx);
 		this.drawScraps(ctx);
 		this.drawProjectiles(ctx);
@@ -448,7 +472,9 @@ class Game extends React.Component {
 	onHudUpdate(msg) {
 		var hud = JSON.parse(msg);
 		this.state.world.notification = hud.notification;
-		this.shop.setVisible(hud.shopping);
+		if(hud.shopping != this.shop.state.visible) {
+			this.shop.setVisible(hud.shopping);
+		}
 		this.setState(this.state);
 	} 
 	

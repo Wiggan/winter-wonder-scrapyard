@@ -87,7 +87,7 @@ class HUD extends React.Component {
 					<div>{ this.renderReadyButton() }</div>
 				</div>
 				<div>{ this.renderScoreBoard() }</div>
-				<div className="controls">Controls:<br/>WASD - Steering<br/>Space - Brake<br/>Up - Fire<br/>Left/Right - Turret rotation<br/>E - Boost<br/></div>
+				<div className="controls">Controls:<br/>WASD - Steering<br/>Space - Brake<br/>Up - Fire<br/>Left/Right - Turret rotation<br/>E - Boost<br/>Esc - Leave Shop<br/></div>
 			</div>
 		);
     }

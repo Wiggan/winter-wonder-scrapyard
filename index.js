@@ -45,7 +45,8 @@ var KeyEnum = {
 	boost: 69,
 	fire: 38,
 	towerleft: 37,
-	towerright: 39
+	towerright: 39,
+	leaveshop: 27
 };
 Object.freeze(KeyEnum);
 
@@ -177,6 +178,13 @@ io.on('connection', function(socket){
 				socket.player.keysDown.push(key);
 				updateAppearanceDueToKeyEvent(socket.player);
 			break;
+			case KeyEnum.leaveshop:
+				if(socket.player.hud.shopping === true) {
+					socket.player.hud.shopping = false;
+					socket.emit('hud update', JSON.stringify(socket.player.hud));
+					setTimeout(() => { gameStateMachine.respawnPlayer(socket); }, 1000);
+				}
+			break;
 			default:
 			break;
 		}
@@ -207,66 +215,39 @@ io.on('connection', function(socket){
 		status: {
 			id: playerId,
 			pos: pos,
-			vel: [0, 0],
 			rotation: rotation,
-			towerrotation: 0,
-			turning: 0,
-			driving: 0,
-			alive: true,
-
-			size: [14, 20],
-			tiresize: [4, 6],
 			color: color,
-			bumper: false,
-			dubbs: false,
-			spikes: false,
-			rockets: false,
-			tripple: false,
-		},
-		stats: {
-			acc: 70,
-			friction: 20,
-			bumperFactor: 2,
-			boostForce: 10000,
-			boostCooldownTime: 3000,
-			rocketsCooldownTime: 2000,
-			rocketSpeed: 400,
-			rocketForce: 300,
-			brakeFriction: 200,
-			grip: 0.8,
-			rotationSpeed: 0.007,
-			towerRotationSpeed: 1,
-			
-			bumper: false,
-			freeRotataion: false,
-			boost: false,
-			boostCooldown: false,
-			rockets: false,
-			rocketsCooldown: false,
-			towerRotation: false,
-			tripple: false,
+			alive: io.world.gameState.state === StateEnum.arena ? false : true
 		},
 		hud: {
 			name: chance.prefix({ full: false }) + " " + chance.word({ syllables: 2 }),
-			scrap: 100,
-			health: 100,
+			scrap: io.world.gameState.state === StateEnum.lobby ? 100 : 0,
 			color: color,
-			shopping: false,
-			score: 0,
-			ready: false,
 			notification: undefined,
 		},
 		upgrades: []
 	};
+	socket.player.status = Object.assign(JSON.parse(JSON.stringify(io.world.config.player.status)), socket.player.status);
+	socket.player.stats = JSON.parse(JSON.stringify(io.world.config.player.stats));
+	socket.player.hud = Object.assign(JSON.parse(JSON.stringify(io.world.config.player.hud)), socket.player.hud);
+	
 	io.world.players.push(socket.player.status);
 	io.world.gameState.playerStates.push(socket.player.hud);
+	
+	socket.player.hud.notification = {
+		pos: socket.player.status.pos,
+		radius: socket.player.status.size[1] + 20
+	};
+	setTimeout(() => {
+			socket.player.hud.notification = undefined;
+			socket.emit('hud update', JSON.stringify(socket.player.hud));
+	}, 2000);
+	
 	socket.emit('new map', JSON.stringify(io.world.level));
 	socket.emit('hud update', JSON.stringify(socket.player.hud));
 	socket.emit('game update', JSON.stringify(io.world.gameState));
+	socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
 });
-
-
-
 
 app.listen(3000, function(){
     console.log('listening on *:3000');
@@ -363,17 +344,15 @@ app.listen(3000, function(){
 				
 				// Is shopping?
 				if(io.world.level.shop !== undefined) {
-					if(dist(pos1, io.world.level.shop.pos) < io.world.level.shop.radius) {
+					if(socket1.player.status.alive===true && dist(pos1, io.world.level.shop.pos) < io.world.level.shop.radius) {
 						if(socket1.player.hud.shopping === false) {
 							socket1.player.hud.shopping = true;
 							socket1.player.hud.health = 100;
+							socket1.player.status.alive = false;
 							socket1.player.status.vel = [0, 0];
 							socket1.player.status.pos = copy(io.world.level.shop.pos);
 							socket1.emit('hud update', JSON.stringify(socket1.player.hud));
 						}
-					} else if(socket1.player.hud.shopping === true) {
-						socket1.player.hud.shopping = false;
-						socket1.emit('hud update', JSON.stringify(socket1.player.hud));
 					}
 				}
 				
@@ -456,7 +435,7 @@ app.listen(3000, function(){
 					sub(force, mult(norm(copy(socket.player.status.vel)), socket.player.stats.friction));
 					
 					// NaN problem with angles when stationary
-					if(mag(socket.player.status.vel) > 0.17) {
+					if(mag(socket.player.status.vel) > 1.5) {
 
 						var forward = rad2dir(socket.player.status.rotation)
 						

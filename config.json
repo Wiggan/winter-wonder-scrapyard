@@ -139,6 +139,7 @@
 		},
 		"hud": {
 			"shopping": false,
+			"ready": false,
 			"scrap": 0,
 			"health": 100,
 			"score": 0
@@ -146,7 +147,7 @@
 	},
 	"parameters": {
 		"waterDamage": 50,
-		"roundTime": 60000,
+		"roundTime": 6000,
 		"winnerScore": 3
 	}
 }

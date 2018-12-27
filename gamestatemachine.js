@@ -157,6 +157,7 @@ module.exports = class GameStateMachine {
 		this.io.world.level = this.io.levelGenerator.generate(800, 600, true);
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
 		Object.values(this.io.sockets.sockets).map((socket) => {
+			socket.player.hud.shopping = false;
 			this.respawnPlayer(socket);
 		});
 		
@@ -184,7 +185,7 @@ module.exports = class GameStateMachine {
 		Object.values(this.io.sockets.sockets).map((socket) => {
 			socket.player.hud.notification = {
 				pos: socket.player.status.pos,
-				radius: socket.player.status.size[1] + 2
+				radius: socket.player.status.size[1] + 20
 			};
 			socket.emit('hud update', JSON.stringify(socket.player.hud));
 		});
