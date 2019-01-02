@@ -43,6 +43,7 @@ var KeyEnum = {
 	right: 68,
 	brake: 32,
 	boost: 69,
+	parachute: 81,
 	fire: 38,
 	towerleft: 37,
 	towerright: 39,
@@ -141,6 +142,21 @@ io.on('connection', function(socket){
 				socket.player.stats.bumper = true;
 				socket.player.status.bumper = true;
 				break;
+			case 102: // Vinklad nos
+				socket.player.stats.nose = true;
+				socket.player.status.nose = true;
+				break;
+			case 103: // Pontoner
+				socket.player.status.pontons = true;
+				socket.player.stats.waterDefense += item.waterDefense;
+				break;
+			case 104: // Skovelhjul
+				socket.player.status.paddle = true;
+				socket.player.stats.waterDefense += item.waterDefense;
+				break;
+			case 105: // Bromsskärm
+				socket.player.stats.parachute = true;
+				break;
 			case 201: // Raketgevär
 				socket.player.status.rockets = true;
 				socket.player.stats.rockets = true;
@@ -154,6 +170,9 @@ io.on('connection', function(socket){
 			case 204: // Trippelraket
 				socket.player.status.tripple = true;
 				socket.player.stats.tripple = true;
+				break;
+			case 205: // Lasersikte
+				socket.player.status.laser = true;
 				break;
 				
 			default:
@@ -172,6 +191,7 @@ io.on('connection', function(socket){
 			case KeyEnum.right:
 			case KeyEnum.brake:
 			case KeyEnum.boost:
+			case KeyEnum.parachute:
 			case KeyEnum.fire:
 			case KeyEnum.towerleft:
 			case KeyEnum.towerright:
@@ -197,6 +217,7 @@ io.on('connection', function(socket){
 			case KeyEnum.right:
 			case KeyEnum.brake:
 			case KeyEnum.boost:
+			case KeyEnum.parachute:
 			case KeyEnum.fire:
 			case KeyEnum.towerleft:
 			case KeyEnum.towerright:
@@ -327,9 +348,18 @@ app.listen(3000, function(){
 					var pos2 = projectile.pos;
 					if (socket1.player.status.id != projectile.owner && dist(pos1, pos2) < socket1.player.status.size[0]) {
 						var direction = norm(copy(projectile.vel));
-						add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
-						projectile.done = true;
-						io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));
+						if(socket1.player.stats.nose && Math.abs(angle(direction, rad2dir(socket1.player.status.rotation + Math.PI))) < 0.6 && Math.random() < 0.5) {
+							console.log("Deflected! Incoming angle: " + Math.abs(angle(direction, rad2dir(socket1.player.status.rotation + Math.PI))));
+							var magnitude = mag(projectile.vel);
+							var newDirection = norm(rad2dir(dir2rad(projectile.vel) + (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2)));
+							projectile.vel = mult(copy(newDirection), magnitude);
+							projectile.pos = add(copy(pos1), mult(copy(newDirection), socket1.player.status.size[0] + 1));
+							io.world.effects.push(io.particleGenerator.generateSmoke(projectile.pos, 1));
+						} else {
+							add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
+							projectile.done = true;
+							io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));
+						}
 					}
 				});
 				
@@ -341,6 +371,19 @@ app.listen(3000, function(){
 						scrap.done = true;
 					}
 				});
+				
+				// Parachute effective 
+				if(socket1.player.status.parachute) {
+					add(socket1.player.status.parachute.pos, mult(copy(socket1.player.status.parachute.vel), elapsed));
+					if(dist(socket1.player.status.parachute.pos, socket1.player.status.pos) > 50 && !socket1.player.status.parachute.effective) {
+						socket1.player.status.parachute.effective = true;
+						mult(socket1.player.status.vel, 0.4);
+						socket1.player.status.parachute.vel = copy(socket1.player.status.vel);
+						socket1.player.status.rotation = dir2rad(sub(copy(socket1.player.status.parachute.pos), socket1.player.status.pos));
+						socket1.player.status.parachute.rotation = dir2rad(sub(copy(socket1.player.status.pos), socket1.player.status.parachute.pos));
+						setTimeout(() => { socket1.player.status.parachute = undefined; }, 300);
+					}
+				}
 				
 				// Is shopping?
 				if(io.world.level.shop !== undefined) {
@@ -390,6 +433,20 @@ app.listen(3000, function(){
 							io.world.effects.push(io.particleGenerator.generateExplosion(sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), socket.player.status.size[1]))));
 						}
 					}
+					if(socket.player.keysDown.includes(KeyEnum.parachute)) {
+						if(socket.player.stats.parachute && !socket.player.stats.parachuteCooldown) {
+							console.log("Parachuting");
+							socket.player.stats.parachuteCooldown = true;
+							socket.player.status.parachute = {
+								pos: copy(socket.player.status.pos),
+								vel: [0, 0],
+								rotation: socket.player.status.rotation,
+								effective: false
+							};
+							setTimeout(() => { socket.player.status.parachute = undefined; }, 3000);
+							setTimeout(function(){ socket.player.stats.parachuteCooldown = false; }, socket.player.stats.parachuteCooldownTime);
+						}
+					}
 					if(socket.player.keysDown.includes(KeyEnum.towerleft) && socket.player.stats.towerRotation) {
 						socket.player.status.towerrotation -= socket.player.stats.towerRotationSpeed * elapsed;
 					}
@@ -398,15 +455,14 @@ app.listen(3000, function(){
 					}
 					if(socket.player.keysDown.includes(KeyEnum.fire)) {
 						if(socket.player.stats.rockets && !socket.player.stats.rocketsCooldown) {
-							console.log("Shooting");
 							socket.player.stats.rocketsCooldown = true;
 							var rotation = socket.player.status.towerrotation + socket.player.status.rotation;
 							var velocity = add(mult(rad2dir(rotation), socket.player.stats.rocketSpeed), socket.player.status.vel);
-							
+							var position = sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), 4))
 							io.world.projectiles.push({
 								vel: velocity,
 								rotation: rotation,
-								pos: copy(socket.player.status.pos),
+								pos: copy(position),
 								owner: socket.player.status.id,
 							});
 							if(socket.player.stats.tripple) {
@@ -417,17 +473,16 @@ app.listen(3000, function(){
 								io.world.projectiles.push({
 									vel: velocity2,
 									rotation: rotation2,
-									pos: copy(socket.player.status.pos),
+									pos: copy(position),
 									owner: socket.player.status.id,
 								});
 								io.world.projectiles.push({
 									vel: velocity3,
 									rotation: rotation3,
-									pos: copy(socket.player.status.pos),
+									pos: copy(position),
 									owner: socket.player.status.id,
 								});
 							}
-							console.log(io.world.projectiles);
 							setTimeout(function(){ socket.player.stats.rocketsCooldown = false; }, socket.player.stats.rocketsCooldownTime);
 						}
 					}
@@ -472,7 +527,7 @@ app.listen(3000, function(){
 					
 					// Check if player is in water
 					if(io.levelGenerator.isInWater(socket.player.status.pos)) {
-						socket.player.hud.health -= elapsed * io.world.config.parameters.waterDamage;
+						socket.player.hud.health -= elapsed * (io.world.config.parameters.waterDamage - socket.player.stats.waterDefense);
 						socket.emit('hud update', JSON.stringify(socket.player.hud));
 						if(socket.player.hud.health <= 0) {
 							io.world.effects.push(io.particleGenerator.generateExplosion(socket.player.status.pos));

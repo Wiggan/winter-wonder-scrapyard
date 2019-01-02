@@ -107,6 +107,7 @@ module.exports = class GameStateMachine {
 		socket.player.status.rotation = this.io.levelGenerator.getInwardRotation(socket.player.status.pos);
 		socket.player.status.towerrotation = 0;
 		socket.player.status.alive = true;
+		socket.player.status.parachute = null;
 		socket.player.hud.health = 100;
 		socket.emit('hud update', JSON.stringify(socket.player.hud));
 	}
@@ -144,6 +145,7 @@ module.exports = class GameStateMachine {
 		setTimeout(() => {
 			this.startArenaRound();
 		}, this.io.world.config.parameters.roundTime);
+		this.io.emit('countdown started', this.io.world.config.parameters.roundTime / 1000);
 		this.runCountDown("Collect scrap and buy upgrades");
 	}
 

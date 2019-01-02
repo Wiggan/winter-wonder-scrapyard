@@ -93,7 +93,6 @@ class Shop extends React.Component {
 			nodes: nodes,
 			edges: data.edges
 		});
-		
 	}
 	
 	componentDidMount() {
@@ -105,6 +104,7 @@ class Shop extends React.Component {
 	
 	componentDidUpdate() {
 		if (this.state.visible) {
+			this.network.Network.stabilize(5);
 			this.network.Network.fit();  // Fy fan.
 		}
 		// console.log(this.network);

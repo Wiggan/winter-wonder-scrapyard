@@ -21,7 +21,8 @@ class HUD extends React.Component {
 				state: StateEnum.lobby,
 				physicsOn: true,
 				msg: 0,
-			}
+			},
+			timeleft: -1,
 		};
 	}
 
@@ -33,9 +34,18 @@ class HUD extends React.Component {
 		this.state.game = JSON.parse(game);
 		this.setState(this.state);
 	}
+	onCountdownStarted(time) {
+		this.state.timeleft = time;
+		this.setState(this.state);
+	}
 	componentDidMount() {
 		Socket.addOnHudUpdate(this.onHudUpdate.bind(this));
 		Socket.addOnGameUpdate(this.onGameUpdate.bind(this));
+		Socket.setOnCountdownStarted(this.onCountdownStarted.bind(this));
+		this.countdownInterval = setInterval(() => {
+			this.state.timeleft -= 1;
+			this.setState(this.state);
+		}, 1000);
 		Socket.getHud();
 	}
 	
@@ -77,6 +87,19 @@ class HUD extends React.Component {
 		}
 	}
 	
+	renderCountdown() {
+		if(this.state.timeleft >= 0) {
+			return(
+				<div>{this.state.timeleft} seconds until arena</div>
+			);
+		} else {
+			return (
+				<div>
+				</div>
+			);		
+		}
+	}
+	
 	render() {
 		return (
 			<div id="hud">
@@ -85,9 +108,10 @@ class HUD extends React.Component {
 					<progress value={ this.state.hud.health } max="100"/>
 					<div className="scrap">Scrap: {this.state.hud.scrap}</div>
 					<div>{ this.renderReadyButton() }</div>
+					<div>{ this.renderCountdown() }</div>
 				</div>
 				<div>{ this.renderScoreBoard() }</div>
-				<div className="controls">Controls:<br/>WASD - Steering<br/>Space - Brake<br/>Up - Fire<br/>Left/Right - Turret rotation<br/>E - Boost<br/>Esc - Leave Shop<br/></div>
+				<div className="controls">Controls:<br/>WASD - Steering<br/>Space - Brake<br/>Up - Fire<br/>Left/Right - Turret rotation<br/>E - Boost<br/>Q - Parachute<br/>Esc - Leave Shop<br/></div>
 			</div>
 		);
     }

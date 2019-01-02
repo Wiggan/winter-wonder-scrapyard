@@ -17,21 +17,21 @@
 			{
 				"id": 3,
 				"label": "Bättre svängradie",
-				"cost": 2,
+				"cost": 4,
 				"level": 3,
-				"rotationSpeed": 0.02
+				"rotationSpeed": 0.018
 			},
 			{
 				"id": 4,
 				"label": "Snabbare motor",
 				"cost": 3,
 				"level": 2,
-				"acc": 150
+				"acc": 140
 			},
 			{
 				"id": 5,
 				"label": "Turboskjuts",
-				"cost": 5,
+				"cost": 3,
 				"level": 3
 			},
 			{
@@ -51,6 +51,27 @@
 			{
 				"id": 102,
 				"label": "Vinklad nos",
+				"cost": 4,
+				"level": 3,
+				"chance": 50
+			},
+			{
+				"id": 103,
+				"label": "Pontoner",
+				"cost": 2,
+				"level": 2,
+				"waterDefense": 15
+			},
+			{
+				"id": 104,
+				"label": "Skovelhjul",
+				"cost": 3,
+				"level": 3,
+				"waterDefense": 15
+			},
+			{
+				"id": 105,
+				"label": "Bromsskärm",
 				"cost": 3,
 				"level": 2
 			},
@@ -64,7 +85,7 @@
 			{
 				"id": 202,
 				"label": "Handvetat kanontorn",
-				"cost": 4,
+				"cost": 2,
 				"level": 2
 			},
 			{
@@ -72,13 +93,19 @@
 				"label": "Servokanontorn",
 				"cost": 3,
 				"level": 3,
-				"towerRotationSpeed": 4
+				"towerRotationSpeed": 3
 			},
 			{
 				"id": 204,
 				"label": "Trippelraket",
-				"cost": 3,
+				"cost": 6,
 				"level": 2
+			},
+			{
+				"id": 205,
+				"label": "Lasersikte",
+				"cost": 2,
+				"level": 3
 			}
 			
 		],
@@ -90,11 +117,16 @@
 		  {"from": 1, "to": 6},
 		  
 		  
-		  {"from": 101, "to": 102},
+		  {"from": 101, "to": 105},
+		  {"from": 103, "to": 104},
+		  {"from": 6, "to": 104},
+		  {"from": 105, "to": 102},
+		  {"from": 101, "to": 103},
 		  
 		  
 		  {"from": 201, "to": 202},
 		  {"from": 202, "to": 203},
+		  {"from": 202, "to": 205},
 		  {"from": 201, "to": 204}
 		]
 	},
@@ -105,6 +137,7 @@
 			"turning": 0,
 			"driving": 0,
 			"alive": true,
+			"parachute": null,
 
 			"size": [14, 20],
 			"tiresize": [4, 6],
@@ -112,21 +145,27 @@
 			"dubbs": false,
 			"spikes": false,
 			"rockets": false,
-			"tripple": false
+			"tripple": false,
+			"laser": false,
+			"pontons": false,
+			"nose": false
 		},
 		"stats": {
-			"acc": 70,
+			"acc": 80,
 			"friction": 20,
 			"bumperFactor": 2,
 			"boostForce": 10000,
 			"boostCooldownTime": 3000,
-			"rocketsCooldownTime": 2000,
-			"rocketSpeed": 400,
-			"rocketForce": 300,
+			"parachuteCooldownTime": 5000,
+			"rocketsCooldownTime": 3000,
+			"rocketSpeed": 300,
+			"rocketForce": 200,
 			"brakeFriction": 200,
 			"grip": 0.8,
-			"rotationSpeed": 0.01,
+			"rotationSpeed": 0.011,
 			"towerRotationSpeed": 1,
+			"waterDefense": 0,
+			
 			
 			"bumper": false,
 			"freeRotataion": false,
@@ -135,7 +174,10 @@
 			"rockets": false,
 			"rocketsCooldown": false,
 			"towerRotation": false,
-			"tripple": false
+			"tripple": false,
+			"nose": false,
+			"parachute": false,
+			"parachuteCooldown": false
 		},
 		"hud": {
 			"shopping": false,
@@ -147,7 +189,7 @@
 	},
 	"parameters": {
 		"waterDamage": 50,
-		"roundTime": 6000,
+		"roundTime": 60000,
 		"winnerScore": 3
 	}
 }

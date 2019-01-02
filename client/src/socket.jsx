@@ -43,6 +43,9 @@ class Socket extends React.Component {
 	setOnWorldUpdate(callback) {
 		this.socket.on('world update', callback);
 	}
+	setOnCountdownStarted(callback) {
+		this.socket.on('countdown started', callback);
+	}
 	keydown(keyCode) {
 		this.socket.emit('keydown', keyCode);
 	}
@@ -56,6 +59,7 @@ class Socket extends React.Component {
 	onHudUpdate(msg) {
 		this.hudUpdateCallbacks.map((callback) => { callback(msg) });
 	}
+	
 }
 
 export default new Socket();

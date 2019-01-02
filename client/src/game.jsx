@@ -3,7 +3,6 @@ import Socket from './socket'
 import Shop from './shop'
 import './game.css'
 
-
 var mult = require('vectors/mult')(2);
 var add = require('vectors/add')(2);
 var div = require('vectors/div')(2);
@@ -13,9 +12,28 @@ var norm = require('vectors/normalize')(2);
 var lerp = require('vectors/lerp')(2);
 var mag = require('vectors/mag')(2);
 var dot = require('vectors/dot')(2);
+var dist = require('vectors/dist')(2);
 
 const width = 800;
 const height = 600;
+
+function getClosestPointOnSegment(start, stop, point) {
+	var segment = sub(copy(stop), start);
+	var magnitude2 = segment[0]*segment[0] + segment[1]*segment[1];
+	var dotProduct = dot(sub(copy(point), start), segment);
+	var distance = dotProduct / magnitude2;
+	if(distance < 0.0) {
+		return start;
+	} else if(distance > 1.0) {
+		return stop;
+	} else {
+		return add(copy(start), mult(segment, distance));
+	}
+}
+
+function rad2dir(rad) {
+	return [-Math.sin(rad), Math.cos(rad)];
+}
 
 class Game extends React.Component { 
 
@@ -169,7 +187,6 @@ class Game extends React.Component {
 	}
 	
 	drawTires(ctx, size, tiresize, dubbs, spikes, driving, turning) {
-		
 		ctx.save();
 		ctx.translate(-size[0]/2, -size[1]/2 + tiresize[1]/2);
 		this.drawTire(ctx, tiresize, dubbs, spikes, driving);
@@ -242,6 +259,102 @@ class Game extends React.Component {
 		ctx.restore();
 	}
 	
+	drawBumper(ctx, player) {
+		ctx.fillStyle = "rgb(90, 90, 90)";
+		ctx.beginPath();
+		ctx.moveTo(-player.size[0]/2, player.size[1]/2);
+		ctx.lineTo(-player.size[0]/2, player.size[1]/2 + 1);
+		ctx.lineTo(-player.size[0]/2 + 2, player.size[1]/2 + 2);
+		ctx.lineTo(player.size[0]/2 - 2, player.size[1]/2 + 2);
+		ctx.lineTo(player.size[0]/2, player.size[1]/2 + 1);
+		ctx.lineTo(player.size[0]/2, player.size[1]/2);
+		ctx.fill();
+	}
+	drawPontons(ctx, player) {
+		ctx.fillStyle = "grey";
+		ctx.fillRect(-player.size[0]/2 - 2, -3, 2, 6);
+		ctx.fillRect(player.size[0]/2, -3, 2, 6);
+	}
+	drawNose(ctx, player) {
+		ctx.fillStyle = "grey";
+		ctx.beginPath();
+		ctx.moveTo(-player.size[0]/2 + 2, player.size[1]/2-2);
+		ctx.lineTo(0, player.size[1]/2 + 5);
+		ctx.lineTo(player.size[0]/2 - 2, player.size[1]/2-2);
+		ctx.fill();
+	}
+	drawLaser(ctx, player) {
+		ctx.save();
+		
+		
+		var start = sub(copy(player.pos), mult(rad2dir(player.rotation), 4));
+		var length = 500;
+		var stop = add(copy(start), mult(rad2dir(player.rotation + player.towerrotation), length));
+		var gradient = ctx.createLinearGradient(start[0], start[1], stop[0], stop[1]);
+		gradient.addColorStop("0", "rgba(255, 0, 0, 0.0)");
+		gradient.addColorStop("0.1", "rgba(255, 0, 0, 0.75)");
+		gradient.addColorStop("1.0", "rgba(255, 0, 0, 0.0)");
+		if(this.state.world.level !== undefined) {
+			this.state.world.level.rocks.map((rock) => {
+				if (dist(rock.pos, start) - rock.radius < length ) {
+					var point = getClosestPointOnSegment(start, stop, rock.pos);
+					var offsetFromRockCenter = dist(point, rock.pos);
+					if(offsetFromRockCenter <= rock.radius) {
+						var offset = Math.sqrt(rock.radius*rock.radius - offsetFromRockCenter*offsetFromRockCenter);
+						length = dist(point, start) - offset;
+						stop = add(copy(start), mult(rad2dir(player.rotation + player.towerrotation), length));
+					}
+				}
+			});
+			this.state.world.players.map((other) => {
+				var playerRadius = other.size[0] - 3;
+				if (dist(other.pos, start) - playerRadius < length && other !== player) {
+					var point = getClosestPointOnSegment(start, stop, other.pos);
+					var offsetFromPlayerCenter = dist(point, other.pos);
+					if(offsetFromPlayerCenter <= playerRadius) {
+						var offset = Math.sqrt(playerRadius*playerRadius - offsetFromPlayerCenter*offsetFromPlayerCenter);
+						length = dist(point, start) - offset;
+						stop = add(copy(start), mult(rad2dir(player.rotation + player.towerrotation), length));
+					}
+				}
+			});
+		}
+		
+		
+		ctx.strokeStyle = gradient;
+		ctx.beginPath();
+		ctx.moveTo(start[0], start[1]);
+		ctx.lineTo(stop[0], stop[1]);
+		ctx.stroke();
+		if(length < 500) {
+			ctx.fillStyle = "red";
+			ctx.beginPath();
+			ctx.arc(stop[0], stop[1], 2, 0, Math.PI*2, true);
+			ctx.fill();
+		}
+		ctx.restore();
+	}
+	drawParachute(ctx, player) {
+		ctx.fillStyle = player.color;
+		ctx.strokeStyle = "black";
+		ctx.beginPath();
+		ctx.moveTo(player.pos[0], player.pos[1]);
+		ctx.lineTo(player.parachute.pos[0], player.parachute.pos[1]);
+		ctx.stroke();
+		
+		
+		ctx.save();
+		ctx.translate(player.parachute.pos[0], player.parachute.pos[1]);
+		ctx.rotate(player.parachute.rotation);
+		ctx.beginPath();
+		ctx.arc(0, 0, 15, 0, Math.PI, true);
+		ctx.moveTo(-15, 0);
+		ctx.lineTo(15, 0);
+		ctx.fill();
+		ctx.stroke();
+		ctx.restore();
+	}
+	
 	drawPlayers(ctx, ctx2, ctx3) {
 		this.state.world.players.map((player) => {
 			if(player.alive) {
@@ -264,7 +377,7 @@ class Game extends React.Component {
 				ctx3.rotate(player.rotation);
 				ctx3.globalAlpha = 1;
 				
-				ctx3.shadowColor = 'blue';
+				ctx3.shadowColor = player.color;
 				ctx3.shadowBlur = 3;
 				this.drawTires(ctx3, player.size, [player.tiresize[0]-3,player.tiresize[1]-3], false, false, player.driving, player.turning);
 				ctx3.restore();
@@ -276,17 +389,14 @@ class Game extends React.Component {
 				}
 				
 				if(player.bumper === true) {
-					ctx.fillStyle = "grey";
-					ctx.beginPath();
-					ctx.moveTo(-player.size[0]/2, player.size[1]/2);
-					ctx.lineTo(-player.size[0]/2, player.size[1]/2 + 1);
-					ctx.lineTo(-player.size[0]/2 + 2, player.size[1]/2 + 3);
-					ctx.lineTo(player.size[0]/2 - 2, player.size[1]/2 + 3);
-					ctx.lineTo(player.size[0]/2, player.size[1]/2 + 1);
-					ctx.lineTo(player.size[0]/2, player.size[1]/2);
-					ctx.fill();
+					this.drawBumper(ctx, player);
 				}
-				
+				if(player.pontons === true) {
+					this.drawPontons(ctx, player);
+				}
+				if(player.nose === true) {
+					this.drawNose(ctx, player);
+				}
 				ctx.restore();
 				
 				if(this.outsideScreen(player.pos)) {
@@ -390,6 +500,17 @@ class Game extends React.Component {
 			});
 		});
 		ctx.globalAlpha = 1;
+		ctx.restore();
+		this.state.world.players.map((player) => {
+			if(player.alive) {
+				if(player.laser === true) {
+					this.drawLaser(ctx, player);
+				}
+				if(player.parachute) {
+					this.drawParachute(ctx, player);
+				}
+			}	
+		});
 	}
 	
 	drawNotification(ctx) {
@@ -407,8 +528,8 @@ class Game extends React.Component {
 	}
 	
 	drawMessage(ctx) {
-		ctx.font = "30px Arial";
-		ctx.fillStyle = "red";
+		ctx.font = "48px Arial";
+		ctx.fillStyle = "blue";
 		ctx.strokeStyle = "black";
 		ctx.textAlign = "center";
 		ctx.fillText(this.state.world.msg, width/2, height/2);

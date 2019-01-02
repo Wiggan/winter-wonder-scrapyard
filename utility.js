@@ -39,3 +39,17 @@ global.getRandomIntInclusive = function(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+global.getClosestPointOnSegment = function(start, stop, point) {
+	var segment = sub(copy(stop), start);
+	var magnitude2 = segment[0]*segment[0] + segment[1]*segment[1];
+	var dotProduct = dot(sub(copy(point), start), segment);
+	var distance = dotProduct / magnitude2;
+	if(distance < 0.0) {
+		return start;
+	} else if(distance > 1.0) {
+		return stop;
+	} else {
+		return add(copy(start), mult(segment, distance));
+	}
+}

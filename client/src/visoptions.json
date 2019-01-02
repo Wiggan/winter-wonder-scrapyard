@@ -62,7 +62,7 @@
 			"treeSpacing": 100,
 			"direction": "LR",
 			"parentCentralization": false,
-			"sortMethod": "hubsize"
+			"sortMethod": "directed"
 		}
 	},
 	"interaction": {
