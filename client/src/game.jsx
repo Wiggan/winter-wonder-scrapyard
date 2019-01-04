@@ -42,6 +42,7 @@ class Game extends React.Component {
 		this.state = {
 			world: {
 				players: [],
+				critters: [],
 				projectiles: [],
 				scraps: [],
 				effects: [],
@@ -431,6 +432,37 @@ class Game extends React.Component {
 		});
 	}
 	
+	drawCritters(ctx, ctx2) {
+		ctx.fillStyle = "rgb(80, 80, 180)";
+		ctx.strokeStyle = "rgb(50, 50, 50)";
+		ctx2.shadowColor = 'grey';
+		ctx2.shadowBlur = 1;
+		ctx2.fillStyle = 'grey';
+		this.state.world.critters.map((critter) => {
+			ctx.save();
+			ctx.translate(critter.pos[0], critter.pos[1]);
+			ctx.rotate(critter.rotation);
+			ctx.beginPath();
+			ctx.arc(0, 0, 4, 0, 2 * Math.PI, false);
+			ctx.moveTo(0, 6);
+			ctx.lineTo(0, 3);
+			ctx.fill();
+			ctx.stroke();
+			ctx.restore();
+			
+			ctx2.save();
+			ctx2.translate(critter.pos[0], critter.pos[1]);
+			ctx2.rotate(critter.rotation);
+			ctx2.globalAlpha = 1;
+			
+			ctx2.beginPath();
+			ctx2.arc(0, 0, 1, 0, 2 * Math.PI, false);
+			ctx2.fill();
+			ctx2.restore();
+		});
+		
+	}
+	
 	outsideScreen(pos) {
 		return pos[0] < 0 || pos[0] > width || pos[1] < 0 || pos[1] > height;
 	}
@@ -541,6 +573,7 @@ class Game extends React.Component {
 		ctx.clearRect(0, 0, width, height);
 		
 		this.drawMap(ctx);
+		this.drawCritters(ctx, this.tracecanvas.getContext("2d"));
 		this.drawPlayers(ctx, this.tracecanvas.getContext("2d"), this.tracecanvas2.getContext("2d"));
 		this.drawShop(ctx);
 		this.drawScraps(ctx);
@@ -570,6 +603,7 @@ class Game extends React.Component {
 		this.state.world.projectiles = update.projectiles;
 		this.state.world.scraps = update.scraps;
 		this.state.world.effects = update.effects;
+		this.state.world.critters = update.critters;
 		this.setState({
 			world: this.state.world
 		});

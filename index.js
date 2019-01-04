@@ -1,12 +1,14 @@
 var mult = require('vectors/mult')(2);
 var add = require('vectors/add')(2);
 var sub = require('vectors/sub')(2);
+var div = require('vectors/div')(2);
 var copy = require('vectors/copy')(2);
 var norm = require('vectors/normalize')(2);
 var lerp = require('vectors/lerp')(2);
 var mag = require('vectors/mag')(2);
 var dot = require('vectors/dot')(2);
 var dist = require('vectors/dist')(2);
+var limit = require('vectors/limit')(2);
 require('./utility.js');
 const math = require('mathjs');
 var chance = require('chance').Chance();
@@ -409,7 +411,12 @@ app.listen(3000, function(){
 				}
 			});
 			
-			
+			// Move critters
+			io.world.level.critters.map((critter) => {
+				add(critter.vel, mult(copy(critter.acc), elapsed));
+				add(critter.pos, mult(copy(critter.vel), elapsed));
+				critter.rotation = dir2rad(critter.vel);
+			});
 			
 			Object.values(io.sockets.sockets).map((socket) => {
 					if(socket.player.status.alive) {
@@ -457,7 +464,7 @@ app.listen(3000, function(){
 						if(socket.player.stats.rockets && !socket.player.stats.rocketsCooldown) {
 							socket.player.stats.rocketsCooldown = true;
 							var rotation = socket.player.status.towerrotation + socket.player.status.rotation;
-							var velocity = add(mult(rad2dir(rotation), socket.player.stats.rocketSpeed), socket.player.status.vel);
+							var velocity = mult(rad2dir(rotation), socket.player.stats.rocketSpeed);
 							var position = sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), 4))
 							io.world.projectiles.push({
 								vel: velocity,
@@ -467,9 +474,9 @@ app.listen(3000, function(){
 							});
 							if(socket.player.stats.tripple) {
 								var rotation2 = socket.player.status.towerrotation + socket.player.status.rotation + 0.2;
-								var velocity2 = add(mult(rad2dir(rotation2), socket.player.stats.rocketSpeed), socket.player.status.vel);
+								var velocity2 = mult(rad2dir(rotation2), socket.player.stats.rocketSpeed)
 								var rotation3 = socket.player.status.towerrotation + socket.player.status.rotation - 0.2;
-								var velocity3 = add(mult(rad2dir(rotation3), socket.player.stats.rocketSpeed), socket.player.status.vel);
+								var velocity3 = mult(rad2dir(rotation3), socket.player.stats.rocketSpeed);
 								io.world.projectiles.push({
 									vel: velocity2,
 									rotation: rotation2,
@@ -610,6 +617,104 @@ app.listen(3000, function(){
 			projectiles: io.world.projectiles,
 			scraps: io.world.scraps,
 			effects: io.world.effects,
+			critters: io.world.level.critters,
 		}));
 	}, 16.6666);
+	setInterval(() => {
+		runFlocking(io.world.level.critters);
+	}, 200);
 });
+
+function runFlocking(flock) {
+	const desiredSeparation = 15;
+	const alignmentDistance = 100;
+	const cohesionDistance = 150;
+	const desiredPlayerDistance = 100;
+	
+	const maxForce = 2;
+	const maxSpeed = 12;
+	
+	const sensorLength = 20;
+	const sensors = [mult(rad2dir(0), sensorLength),
+					 mult(rad2dir(Math.PI / 3), sensorLength),
+					 mult(rad2dir(Math.PI * 2 / 3), sensorLength),
+					 mult(rad2dir(Math.PI), sensorLength),
+					 mult(rad2dir(Math.PI * 4 / 3), sensorLength),
+					 mult(rad2dir(Math.PI * 5 / 3), sensorLength),];
+	flock.map((critter) => {
+		var separation = [0, 0];
+		var alignment = [0, 0];
+		var cohesion = [0, 0];
+		var playerAvoidance = [0, 0];
+		var waterAvoidance = [0, 0];
+		var separationCount = 0;
+		var alignmentCount = 0;
+		var cohesionCount = 0;
+		var playerCount = 0;
+		var waterCount = 0;
+		flock.map((other) => {
+			// Separation
+			if(dist(critter.pos, other.pos) < desiredSeparation) {
+				add(separation, sub(copy(critter.pos), other.pos));
+				separationCount++;
+			}
+			
+			// Alignment
+			if(dist(critter.pos, other.pos) < alignmentDistance) {
+				add(alignment, other.vel);
+				alignmentCount++;
+			}
+			
+			// Cohesion
+			if(dist(critter.pos, other.pos) < cohesionDistance) {
+				add(cohesion, other.pos);
+				cohesionCount++;
+			}
+		});
+		
+		// Level avoidance
+		sensors.map((sensor) => {
+			if(io.levelGenerator.isInWater(add(copy(critter.pos), sensor))) {
+				sub(waterAvoidance, sensor);
+				waterCount++;
+			}
+		});
+		
+		// Player avoidance
+		Object.values(io.sockets.sockets).map((socket) => {
+			var distance = dist(critter.pos, socket.player.status.pos);
+			if(distance < desiredPlayerDistance) {
+				add(playerAvoidance, mult(sub(copy(critter.pos), socket.player.status.pos), desiredPlayerDistance - distance));
+				playerCount++;
+			}
+		});
+		
+		if(separationCount > 0) {
+			div(separation, separationCount);
+			limit(sub(mult(norm(separation), maxSpeed), critter.vel), maxForce);
+		}
+		if(alignmentCount > 0)  {
+			div(alignment, alignmentCount);
+			limit(sub(mult(norm(alignment), maxSpeed), critter.vel), maxForce);
+		}
+		if(cohesionCount > 0)  {
+			div(cohesion, cohesionCount);
+			limit(sub(mult(norm(sub(cohesion, critter.pos)), maxSpeed), critter.vel), maxForce);
+		}
+		if(playerCount > 0)  {
+			div(playerAvoidance, playerCount);
+			limit(sub(mult(norm(playerAvoidance), maxSpeed), critter.vel), maxForce*2);
+		}
+		if(waterCount > 0)  {
+			div(waterAvoidance, waterCount);
+			limit(sub(mult(norm(waterAvoidance), maxSpeed), critter.vel), maxForce);
+		}
+		
+		critter.acc = [0, 0];
+		add(critter.acc, mult(separation, 1.5));
+		add(critter.acc, mult(alignment, 0.9));
+		add(critter.acc, cohesion);
+		add(critter.acc, mult(playerAvoidance, 2));
+		add(critter.acc, mult(waterAvoidance, 2));
+	});
+}

@@ -26,19 +26,22 @@ module.exports = class LevelGenerator {
 		this.explode();
 		this.explode();
 		this.rocks = [];
+		this.critters = [];
 		if(arena) {
 			this.shop = undefined;
 		} else {
 			this.shop = this.addShop();
 		}
 		this.addRocks();
-		
+		this.addCritters();
+		console.log(this.critters);
 		return {
 			squareSize: this.squareSize,
 			grid: this.grid,
 			colors: ["rgb(0, 80, 255)", "rgb(150, 190, 255)", "rgb(50, 50, 50)"],
 			rocks: this.rocks,
-			shop: this.shop
+			shop: this.shop,
+			critters: this.critters
 		}
 	}
 
@@ -121,6 +124,32 @@ module.exports = class LevelGenerator {
 				this.rocks.push({
 					pos: pos,
 					radius: getRandomIntInclusive(10-j, 15-j),
+				});
+			}
+		}
+	}
+	
+	addCritters() {
+		var critterClusterCount = getRandomIntInclusive(1, 3);
+		for(var i = 0; i < critterClusterCount; i++) {
+			var rotation = Math.random() * 2 * Math.PI;
+			var leader = {
+				pos: this.getCollisionFreePosition(),
+				cluster: i,
+				rotation: rotation,
+				vel: mult(rad2dir(rotation), getRandomIntInclusive(1, 3)),
+				acc: [0, 0]
+			};
+			this.critters.push(leader);
+			var critterCount = getRandomIntInclusive(4, 8);
+			for(var j = 1; j < critterCount; j++) {
+				var pos = add(mult(rad2dir(j / (critterCount-1) * 2 * Math.PI), getRandomIntInclusive(4, 8)), leader.pos);
+				this.critters.push({
+					pos: pos,
+					cluster: i,
+					rotation: Math.random() * 2 * Math.PI,
+					vel: [0, 0],
+					acc: [0, 0]
 				});
 			}
 		}
