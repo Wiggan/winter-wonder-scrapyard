@@ -182,6 +182,9 @@
 		"hud": {
 			"shopping": false,
 			"ready": false,
+			"rockets": false,
+			"parachute": false,
+			"boost": false,
 			"scrap": 0,
 			"health": 100,
 			"score": 0

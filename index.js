@@ -134,6 +134,7 @@ io.on('connection', function(socket){
 				break;
 			case 5: // Turboskjuts
 				socket.player.stats.boost = true;
+				socket.player.hud.boost = true;
 				break;
 			case 6: // Spikdäck
 				socket.player.status.spikes = true;
@@ -158,10 +159,12 @@ io.on('connection', function(socket){
 				break;
 			case 105: // Bromsskärm
 				socket.player.stats.parachute = true;
+				socket.player.hud.parachute = true;
 				break;
 			case 201: // Raketgevär
 				socket.player.status.rockets = true;
 				socket.player.stats.rockets = true;
+				socket.player.hud.rockets = true;
 				break;
 			case 202: // Handvetat kanontorn
 				socket.player.stats.towerRotation = true;
@@ -374,6 +377,14 @@ app.listen(3000, function(){
 					}
 				});
 				
+				// Collision with critters
+				io.world.level.critters.map((critter) => {
+					if (dist(pos1, critter.pos) < socket1.player.status.size[1]) {
+						io.world.effects.push(io.particleGenerator.generateBlood(critter.pos, socket1.player.status.vel));
+						critter.done = true;
+					}
+				});
+				
 				// Parachute effective 
 				if(socket1.player.status.parachute) {
 					add(socket1.player.status.parachute.pos, mult(copy(socket1.player.status.parachute.vel), elapsed));
@@ -437,6 +448,10 @@ app.listen(3000, function(){
 							socket.player.stats.boostCooldown = true;
 							add(force, mult(rad2dir(socket.player.status.rotation), socket.player.stats.boostForce));
 							setTimeout(function(){ socket.player.stats.boostCooldown = false; }, socket.player.stats.boostCooldownTime);
+							socket.emit('cooldown', JSON.stringify({
+								item: "boost",
+								time: socket.player.stats.boostCooldownTime
+							}));
 							io.world.effects.push(io.particleGenerator.generateExplosion(sub(copy(socket.player.status.pos), mult(rad2dir(socket.player.status.rotation), socket.player.status.size[1]))));
 						}
 					}
@@ -452,6 +467,10 @@ app.listen(3000, function(){
 							};
 							setTimeout(() => { socket.player.status.parachute = undefined; }, 3000);
 							setTimeout(function(){ socket.player.stats.parachuteCooldown = false; }, socket.player.stats.parachuteCooldownTime);
+							socket.emit('cooldown', JSON.stringify({
+								item: "parachute",
+								time: socket.player.stats.parachuteCooldownTime
+							}));
 						}
 					}
 					if(socket.player.keysDown.includes(KeyEnum.towerleft) && socket.player.stats.towerRotation) {
@@ -491,6 +510,10 @@ app.listen(3000, function(){
 								});
 							}
 							setTimeout(function(){ socket.player.stats.rocketsCooldown = false; }, socket.player.stats.rocketsCooldownTime);
+							socket.emit('cooldown', JSON.stringify({
+								item: "rocket",
+								time: socket.player.stats.rocketsCooldownTime
+							}));
 						}
 					}
 					
@@ -610,6 +633,9 @@ app.listen(3000, function(){
 		io.world.scraps = io.world.scraps.filter((scrap) => {
 			return scrap.done !== true;
 		});
+		io.world.level.critters = io.world.level.critters.filter((critter) => {
+			return critter.done !== true;
+		});
 	}, 16.6666);
 	setInterval(() => {
 		io.emit('world update', JSON.stringify({
@@ -631,8 +657,8 @@ function runFlocking(flock) {
 	const cohesionDistance = 150;
 	const desiredPlayerDistance = 100;
 	
-	const maxForce = 2;
-	const maxSpeed = 12;
+	const maxForce = 20;
+	const maxSpeed = 100;
 	
 	const sensorLength = 20;
 	const sensors = [mult(rad2dir(0), sensorLength),
@@ -674,7 +700,8 @@ function runFlocking(flock) {
 		
 		// Level avoidance
 		sensors.map((sensor) => {
-			if(io.levelGenerator.isInWater(add(copy(critter.pos), sensor))) {
+			var position = add(copy(critter.pos), sensor);
+			if(io.levelGenerator.isInWater(position) || io.levelGenerator.isCollidingWithMapElements(position)){
 				sub(waterAvoidance, sensor);
 				waterCount++;
 			}
@@ -688,6 +715,12 @@ function runFlocking(flock) {
 				playerCount++;
 			}
 		});
+		
+		// Get out of water
+		if(io.levelGenerator.isInWater(critter.pos)) {
+			add(waterAvoidance, sub([io.levelGenerator.width/2, io.levelGenerator.height/2], critter.pos));
+			waterCount++;
+		}
 		
 		if(separationCount > 0) {
 			div(separation, separationCount);

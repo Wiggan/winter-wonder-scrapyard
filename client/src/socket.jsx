@@ -23,6 +23,9 @@ class Socket extends React.Component {
 	buy(id) {
 		this.socket.emit('buy', id);
 	}
+	setOnCoolDown(callback) {
+		this.socket.on('cooldown', callback);
+	}
 	
 	addOnHudUpdate(callback) {
 		this.hudUpdateCallbacks.push(callback);

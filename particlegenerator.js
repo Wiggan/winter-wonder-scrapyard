@@ -135,4 +135,29 @@ module.exports = class ParticleGenerator {
 		}
 		return dust;
 	}
+	
+	generateBlood(pos, direction) {
+		var blood = {
+			birth: Date.now(),
+			particles: [],
+			duration: 500,
+			progress: 0,
+		};
+		var count = getRandomIntInclusive(6, 9);
+		var rotation = dir2rad(direction);
+		for(var i=0; i<count; i++) {
+			var particleDir = rad2dir(rotation + (Math.random() - 0.5)*3);
+			var position = add(copy(pos), mult(copy(particleDir), getRandomIntInclusive(10, 15)));
+			var brightness = getRandomIntInclusive(100,250);
+			var particle = {
+				radius: getRandomIntInclusive(2, 3),
+				direction: particleDir,
+				speed: 0.5,
+				pos: position,
+				color: "rgb("+getRandomIntInclusive(200, 255)+","+getRandomIntInclusive(0, 80)+",0)",
+			};
+			blood.particles.push(particle);
+		}
+		return blood;
+	}
 }

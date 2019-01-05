@@ -2,13 +2,16 @@
 	border: 2px solid white;
 	padding: 10px;
 }
-
+.state {
+	font-size: 36px;
+    text-transform:capitalize;
+}
 .name {
 	text-shadow: 2px 1px grey ;
 	font-size: 24px;
     text-transform:capitalize;
 }
-.scrap {
+.property {
     font-size: 18px;
 }
 .controls {
@@ -35,4 +38,8 @@ border: 2px solid white;
 }
 th {
 	text-align: left;
+}
+meter {
+	float: right;
+	margin: 3px;
 }

@@ -34,7 +34,6 @@ module.exports = class LevelGenerator {
 		}
 		this.addRocks();
 		this.addCritters();
-		console.log(this.critters);
 		return {
 			squareSize: this.squareSize,
 			grid: this.grid,
@@ -130,18 +129,18 @@ module.exports = class LevelGenerator {
 	}
 	
 	addCritters() {
-		var critterClusterCount = getRandomIntInclusive(1, 3);
+		var critterClusterCount = getRandomIntInclusive(2, 4);
 		for(var i = 0; i < critterClusterCount; i++) {
 			var rotation = Math.random() * 2 * Math.PI;
 			var leader = {
 				pos: this.getCollisionFreePosition(),
 				cluster: i,
 				rotation: rotation,
-				vel: mult(rad2dir(rotation), getRandomIntInclusive(1, 3)),
+				vel: [0, 0],
 				acc: [0, 0]
 			};
 			this.critters.push(leader);
-			var critterCount = getRandomIntInclusive(4, 8);
+			var critterCount = getRandomIntInclusive(4, 6);
 			for(var j = 1; j < critterCount; j++) {
 				var pos = add(mult(rad2dir(j / (critterCount-1) * 2 * Math.PI), getRandomIntInclusive(4, 8)), leader.pos);
 				this.critters.push({

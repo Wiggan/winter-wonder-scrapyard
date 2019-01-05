@@ -434,7 +434,6 @@ class Game extends React.Component {
 	
 	drawCritters(ctx, ctx2) {
 		ctx.fillStyle = "rgb(80, 80, 180)";
-		ctx.strokeStyle = "rgb(50, 50, 50)";
 		ctx2.shadowColor = 'grey';
 		ctx2.shadowBlur = 1;
 		ctx2.fillStyle = 'grey';
@@ -442,11 +441,20 @@ class Game extends React.Component {
 			ctx.save();
 			ctx.translate(critter.pos[0], critter.pos[1]);
 			ctx.rotate(critter.rotation);
+			ctx.strokeStyle = "rgb(50, 50, 50)";
 			ctx.beginPath();
 			ctx.arc(0, 0, 4, 0, 2 * Math.PI, false);
 			ctx.moveTo(0, 6);
 			ctx.lineTo(0, 3);
 			ctx.fill();
+			ctx.stroke();
+			
+			ctx.beginPath();
+			ctx.strokeStyle = "rgb(200, 200, 200)";
+			ctx.moveTo(-2, 0);
+			ctx.lineTo(-2, 1);
+			ctx.moveTo(2, 1);
+			ctx.lineTo(2, 0);
 			ctx.stroke();
 			ctx.restore();
 			
@@ -627,7 +635,7 @@ class Game extends React.Component {
 	onHudUpdate(msg) {
 		var hud = JSON.parse(msg);
 		this.state.world.notification = hud.notification;
-		if(hud.shopping != this.shop.state.visible) {
+		if(this.shop && hud.shopping != this.shop.state.visible) {
 			this.shop.setVisible(hud.shopping);
 		}
 		this.setState(this.state);
