@@ -148,13 +148,34 @@ module.exports = class ParticleGenerator {
 		for(var i=0; i<count; i++) {
 			var particleDir = rad2dir(rotation + (Math.random() - 0.5)*3);
 			var position = add(copy(pos), mult(copy(particleDir), getRandomIntInclusive(10, 15)));
-			var brightness = getRandomIntInclusive(100,250);
 			var particle = {
 				radius: getRandomIntInclusive(2, 3),
 				direction: particleDir,
 				speed: 0.5,
 				pos: position,
 				color: "rgb("+getRandomIntInclusive(200, 255)+","+getRandomIntInclusive(0, 80)+",0)",
+			};
+			blood.particles.push(particle);
+		}
+		return blood;
+	}
+	
+	generateBloodStain(pos) {
+		var blood = {
+			birth: Date.now(),
+			particles: [],
+			duration: 3000,
+			progress: 0,
+		};
+		var count = getRandomIntInclusive(3, 4);
+		for(var i=0; i<count; i++) {
+			var position = add(copy(pos), mult(rad2dir(Math.random() * Math.PI * 2), getRandomIntInclusive(5, 10)));
+			var particle = {
+				radius: getRandomIntInclusive(5, 8),
+				direction: [1, 0],
+				speed: 0,
+				pos: position,
+				color: "rgb("+getRandomIntInclusive(100, 200)+","+getRandomIntInclusive(0, 20)+",0)",
 			};
 			blood.particles.push(particle);
 		}

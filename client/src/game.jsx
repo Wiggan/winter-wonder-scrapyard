@@ -437,6 +437,8 @@ class Game extends React.Component {
 		ctx2.shadowColor = 'grey';
 		ctx2.shadowBlur = 1;
 		ctx2.fillStyle = 'grey';
+		
+		ctx.globalAlpha = 0.7;
 		this.state.world.critters.map((critter) => {
 			ctx.save();
 			ctx.translate(critter.pos[0], critter.pos[1]);
@@ -468,6 +470,7 @@ class Game extends React.Component {
 			ctx2.fill();
 			ctx2.restore();
 		});
+		ctx.globalAlpha = 1;
 		
 	}
 	
@@ -568,12 +571,16 @@ class Game extends React.Component {
 	}
 	
 	drawMessage(ctx) {
-		ctx.font = "48px Arial";
-		ctx.fillStyle = "blue";
-		ctx.strokeStyle = "black";
-		ctx.textAlign = "center";
-		ctx.fillText(this.state.world.msg, width/2, height/2);
-		ctx.strokeText(this.state.world.msg, width/2, height/2);
+		if(this.state.world.msg) {
+			ctx.globalAlpha = 0.5;
+			ctx.fillStyle = "black";
+			ctx.fillRect(0, height/2-50, width, 100);
+			ctx.globalAlpha = 1;
+			ctx.font = "32px Arial";
+			ctx.fillStyle = "white";
+			ctx.textAlign = "center";
+			ctx.fillText(this.state.world.msg, width/2, height/2 + 16);
+		}
 	}
 	
 	update() {

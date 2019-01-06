@@ -106,6 +106,7 @@ io.on('connection', function(socket){
 		io.world.gameState.playerStates = io.world.gameState.playerStates.filter((player) => {
 			return socket.player.hud !== player;
 		});
+		gameStateMachine.updateStateMachine();
 	});
 	socket.on('get shop', function(){
 		socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
@@ -259,21 +260,32 @@ io.on('connection', function(socket){
 	
 	io.world.players.push(socket.player.status);
 	io.world.gameState.playerStates.push(socket.player.hud);
+	gameStateMachine.updateStateMachine();
 	
-	socket.player.hud.notification = {
-		pos: socket.player.status.pos,
-		radius: socket.player.status.size[1] + 20
-	};
-	setTimeout(() => {
-			socket.player.hud.notification = undefined;
-			socket.emit('hud update', JSON.stringify(socket.player.hud));
-	}, 2000);
+	if(io.world.gameState.state !== StateEnum.arena) {
+		socket.player.hud.notification = {
+			pos: socket.player.status.pos,
+			radius: socket.player.status.size[1] + 20
+		};
+		setTimeout(() => {
+				socket.player.hud.notification = undefined;
+				socket.emit('hud update', JSON.stringify(socket.player.hud));
+		}, 2000);
+	}
+	
 	
 	socket.emit('new map', JSON.stringify(io.world.level));
 	socket.emit('hud update', JSON.stringify(socket.player.hud));
 	socket.emit('game update', JSON.stringify(io.world.gameState));
 	socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
+	if(io.world.gameState.state === StateEnum.normal) {
+		socket.emit('countdown started', getTimeLeft(io.world.arenaTimeout));
+	}
 });
+
+function getTimeLeft(timeout) { // Requires haxing in a _startTime = Date.now() when starting timer...
+    return Math.floor((timeout._startTime + timeout._idleTimeout - Date.now()) / 1000);
+}
 
 app.listen(3000, function(){
     console.log('listening on *:3000');
@@ -381,6 +393,7 @@ app.listen(3000, function(){
 				io.world.level.critters.map((critter) => {
 					if (dist(pos1, critter.pos) < socket1.player.status.size[1]) {
 						io.world.effects.push(io.particleGenerator.generateBlood(critter.pos, socket1.player.status.vel));
+						io.world.effects.push(io.particleGenerator.generateBloodStain(critter.pos));
 						critter.done = true;
 					}
 				});
@@ -657,7 +670,7 @@ function runFlocking(flock) {
 	const cohesionDistance = 150;
 	const desiredPlayerDistance = 100;
 	
-	const maxForce = 20;
+	const maxForce = 2;
 	const maxSpeed = 100;
 	
 	const sensorLength = 20;
@@ -736,7 +749,7 @@ function runFlocking(flock) {
 		}
 		if(playerCount > 0)  {
 			div(playerAvoidance, playerCount);
-			limit(sub(mult(norm(playerAvoidance), maxSpeed), critter.vel), maxForce*2);
+			limit(sub(mult(norm(playerAvoidance), maxSpeed), critter.vel), maxForce*10);
 		}
 		if(waterCount > 0)  {
 			div(waterAvoidance, waterCount);

@@ -73,6 +73,7 @@ class HUD extends React.Component {
 		this.setState(this.state);
 	}
 	onCountdownStarted(time) {
+		console.log("Got coutdown: " + time + " in state: " + this.state.game.state);
 		this.state.timeleft = time;
 		this.setState(this.state);
 	}
@@ -114,7 +115,7 @@ class HUD extends React.Component {
 	}
 	
 	renderReadyButton() {
-		if(!this.state.hud.ready) {
+		if(!this.state.hud.ready && this.state.game.state === StateEnum.lobby) {
 			return(
 				<button onClick={this.onReadyClicked}>Ready</button>
 			);
@@ -127,9 +128,9 @@ class HUD extends React.Component {
 	}
 	
 	renderCountdown() {
-		if(this.state.timeleft >= 0) {
+		if(this.state.timeleft >= 0 && this.state.game.state === StateEnum.normal) {
 			return(
-				<div>{this.state.timeleft} seconds until arena</div>
+				<div>{this.state.timeleft}s until arena</div>
 			);
 		} else {
 			return (

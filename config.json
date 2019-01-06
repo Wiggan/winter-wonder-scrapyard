@@ -192,7 +192,9 @@
 	},
 	"parameters": {
 		"waterDamage": 50,
-		"roundTime": 60000,
+		"roundTime": 90000,
+		"scrapInterval": 4000,
+		"scrapCap": 10,
 		"winnerScore": 3
 	}
 }

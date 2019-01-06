@@ -19,77 +19,79 @@ module.exports = class GameStateMachine {
 			physicsOn: true,
 			msg: 0,
 		};
-		setInterval(() => {
-			var connectionCount = this.io.engine.clientsCount;
-			switch(this.io.world.gameState.state) {
-				case StateEnum.lobby:
-					var readyCount = 0;
-					Object.values(this.io.sockets.sockets).map((socket) => {
-						if(socket.player.hud.ready) readyCount++;
-						socket.emit('hud update', JSON.stringify(socket.player.hud));
-					});
-					if(readyCount === connectionCount && connectionCount > 1) {
-						console.log("All are ready, game is starting!");
-						this.resetPlayers();
-						this.startNormalRound();
-					}
-				break;
-				case StateEnum.normal:
-					if(connectionCount < 2) {
-						this.resetPlayers();
-						this.startLobby();
-					}
-				break;
-				case StateEnum.arena:
-					if(connectionCount < 2) {
-						this.resetPlayers();
-						this.startLobby();
-						break;
-					}
-					var alivers = [];
-					Object.values(this.io.sockets.sockets).map((socket) => {
-						if(socket.player.status.alive) alivers.push(socket.player.hud);
-					});
-					if(alivers.length <= 1) {
-						if(alivers.length == 1) {
-							alivers[0].score++;
-							var winner = this.doWeHaveAWinner();
-							if(winner !== undefined) {
-								this.io.world.gameState.msg = winner.name + " won the game!!!!";
-								this.io.emit('game update', JSON.stringify(this.io.world.gameState));
-								this.io.world.gameState.state = StateEnum.transition;
-								setTimeout(() => {
-									this.startLobby();
-								}, 5000);
-								break;
-							} else {
-								this.io.world.gameState.msg = alivers[0].name + " won the arena!";
-								this.io.emit('game update', JSON.stringify(this.io.world.gameState));
-							}
-						}
-						this.io.world.gameState.state = StateEnum.transition;
-						setTimeout(() => {
-							this.startNormalRound();
-						}, 2000);
-					}
-				break;
-				default:
-				break;
-			}
-			this.io.world.gameState.playerStates.sort((a, b) => { 
-				if (a.score > b.score) {
-					return -1;
-				} else if(a.score < b.score) {
-					return 1;
-				} else {
-					return 0;
-				}
-			});
-			this.io.emit('game update', JSON.stringify(this.io.world.gameState));
-			
-		}, 1000);
+		setInterval(() => this.updateStateMachine(), 1000);
 	}
 
+	updateStateMachine() {
+		var connectionCount = this.io.engine.clientsCount;
+		switch(this.io.world.gameState.state) {
+			case StateEnum.lobby:
+				var readyCount = 0;
+				Object.values(this.io.sockets.sockets).map((socket) => {
+					if(socket.player.hud.ready) readyCount++;
+					socket.emit('hud update', JSON.stringify(socket.player.hud));
+				});
+				if(readyCount === connectionCount && connectionCount > 1) {
+					console.log("All are ready, game is starting!");
+					this.resetPlayers();
+					this.startNormalRound();
+				}
+			break;
+			case StateEnum.normal:
+				if(connectionCount < 2) {
+					this.resetPlayers();
+					this.startLobby();
+				}
+			break;
+			case StateEnum.arena:
+				if(connectionCount < 2) {
+					this.resetPlayers();
+					this.startLobby();
+					break;
+				}
+				var alivers = [];
+				Object.values(this.io.sockets.sockets).map((socket) => {
+					if(socket.player.status.alive) alivers.push(socket.player.hud);
+				});
+				if(alivers.length <= 1) {
+					if(alivers.length == 1) {
+						alivers[0].score++;
+						var winner = this.doWeHaveAWinner();
+						if(winner !== undefined) {
+							this.io.world.gameState.msg = winner.name + " won the game!!!!";
+							this.io.emit('game update', JSON.stringify(this.io.world.gameState));
+							this.io.world.gameState.state = StateEnum.transition;
+							setTimeout(() => {
+								this.startLobby();
+							}, 5000);
+							break;
+						} else {
+							this.io.world.gameState.msg = alivers[0].name + " won the arena!";
+							this.io.emit('game update', JSON.stringify(this.io.world.gameState));
+						}
+					}
+					this.io.world.gameState.state = StateEnum.transition;
+					setTimeout(() => {
+						this.startNormalRound();
+					}, 2000);
+				}
+			break;
+			default:
+			break;
+		}
+		this.io.world.gameState.playerStates.sort((a, b) => { 
+			if (a.score > b.score) {
+				return -1;
+			} else if(a.score < b.score) {
+				return 1;
+			} else {
+				return 0;
+			}
+		});
+		this.io.emit('game update', JSON.stringify(this.io.world.gameState));
+		
+	}
+	
 	resetPlayers() {
 		Object.values(this.io.sockets.sockets).map((socket) => {
 			socket.player.stats = Object.assign(socket.player.stats, JSON.parse(JSON.stringify(this.io.world.config.player.stats)));
@@ -135,16 +137,17 @@ module.exports = class GameStateMachine {
 		});
 		
 		this.io.world.scrapInterval = setInterval(() => {
-			if(this.io.world.scraps.length < 10) {
+			if(this.io.world.scraps.length < this.io.world.config.parameters.scrapCap) {
 				var pos = this.io.levelGenerator.getCollisionFreePosition();
 				this.io.world.effects.push(this.io.particleGenerator.generateScrapSpawn(pos, 5));
 				this.io.world.scraps.push({pos: pos});
 			}
-		}, 4000);
+		}, this.io.world.config.parameters.scrapInterval);
 		
-		setTimeout(() => {
+		this.io.world.arenaTimeout = setTimeout(() => {
 			this.startArenaRound();
 		}, this.io.world.config.parameters.roundTime);
+		this.io.world.arenaTimeout._startTime = Date.now();
 		this.io.emit('countdown started', this.io.world.config.parameters.roundTime / 1000);
 		this.runCountDown("Collect scrap and buy upgrades");
 	}
@@ -168,6 +171,10 @@ module.exports = class GameStateMachine {
 
 	startLobby() {
 		console.log("Starting lobby!");
+		clearInterval(this.io.world.scrapInterval);
+		clearTimeout(this.io.world.arenaTimeout);
+		this.io.world.scraps = [];
+		this.io.world.projectiles = [];
 		this.io.world.gameState.physicsOn = false;
 		this.io.world.gameState.state = StateEnum.lobby;
 		this.io.world.level = this.io.levelGenerator.generate(800, 600);
