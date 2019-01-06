@@ -145,20 +145,33 @@ module.exports = class GameStateMachine {
 		}, this.io.world.config.parameters.scrapInterval);
 		
 		this.io.world.arenaTimeout = setTimeout(() => {
-			this.startArenaRound();
+			this.startShopping();
 		}, this.io.world.config.parameters.roundTime);
 		this.io.world.arenaTimeout._startTime = Date.now();
 		this.io.emit('countdown started', this.io.world.config.parameters.roundTime / 1000);
 		this.runCountDown("Collect scrap and buy upgrades");
 	}
 
+	startShopping() {
+		console.log("Starting mandatory shopping!");
+		clearInterval(this.io.world.scrapInterval);
+		this.io.world.gameState.physicsOn = false;
+		Object.values(this.io.sockets.sockets).map((socket) => {
+			socket.player.hud.shopping = true;
+			socket.player.status.alive = false;
+			socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
+			socket.emit('hud update', JSON.stringify(socket.player.hud));
+		});
+		this.io.world.shoppingTimeout = setTimeout(() => {
+			this.startArenaRound();
+		}, this.io.world.config.parameters.shoppingTime);
+	}
+	
 	startArenaRound() {
 		console.log("Starting arena!");
-		this.io.world.gameState.physicsOn = false;
 		this.io.world.gameState.state = StateEnum.arena;
 		this.io.world.scraps = [];
 		this.io.world.projectiles = [];
-		clearInterval(this.io.world.scrapInterval);
 		this.io.world.level = this.io.levelGenerator.generate(800, 600, true);
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
 		Object.values(this.io.sockets.sockets).map((socket) => {

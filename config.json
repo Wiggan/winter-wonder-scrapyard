@@ -19,14 +19,14 @@
 				"label": "Bättre svängradie",
 				"cost": 4,
 				"level": 3,
-				"rotationSpeed": 0.018
+				"rotationSpeed": 0.017
 			},
 			{
 				"id": 4,
 				"label": "Snabbare motor",
 				"cost": 3,
 				"level": 2,
-				"acc": 140
+				"acc": 120
 			},
 			{
 				"id": 5,
@@ -86,14 +86,14 @@
 				"id": 202,
 				"label": "Handvetat kanontorn",
 				"cost": 2,
-				"level": 2
+				"level": 1.5
 			},
 			{
 				"id": 203,
 				"label": "Servokanontorn",
 				"cost": 3,
 				"level": 3,
-				"towerRotationSpeed": 3
+				"towerRotationSpeed": 2.2
 			},
 			{
 				"id": 204,
@@ -185,6 +185,7 @@
 			"rockets": false,
 			"parachute": false,
 			"boost": false,
+			"towerRotation": false,
 			"scrap": 0,
 			"health": 100,
 			"score": 0
@@ -193,6 +194,7 @@
 	"parameters": {
 		"waterDamage": 50,
 		"roundTime": 90000,
+		"shoppingTime": 10000,
 		"scrapInterval": 4000,
 		"scrapCap": 10,
 		"winnerScore": 3

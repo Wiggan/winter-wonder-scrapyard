@@ -204,6 +204,29 @@ class HUD extends React.Component {
 		}
 	}
 	
+	getControlStyle(hasEquipment) {
+		if(hasEquipment === true) {
+			return "white";
+		} else {
+			return "grey";
+		}
+	}
+	
+	renderControls() {
+		return(
+			<div>
+				<div style={{color: this.getControlStyle(true)}}>Controls:</div>
+				<div style={{color: this.getControlStyle(true)}}>WASD - Steering</div>
+				<div style={{color: this.getControlStyle(true)}}>Space - Brake</div>
+				<div style={{color: this.getControlStyle(this.state.hud.rockets)}}>Up - Fire</div>
+				<div style={{color: this.getControlStyle(this.state.hud.towerRotation)}}>Left/Right - Turret rotation</div>
+				<div style={{color: this.getControlStyle(this.state.hud.boost)}}>E - Boost</div>
+				<div style={{color: this.getControlStyle(this.state.hud.parachute)}}>Q - Parachute</div>
+				<div style={{color: this.getControlStyle(true)}}>Esc - Leave Shop</div>
+			</div>
+		);
+	}
+	
 	render() {
 		return (
 			<div id="hud">
@@ -217,7 +240,7 @@ class HUD extends React.Component {
 					<div>{ this.renderCountdown() }</div>
 				</div>
 				<div>{ this.renderScoreBoard() }</div>
-				<div className="controls">Controls:<br/>WASD - Steering<br/>Space - Brake<br/>Up - Fire<br/>Left/Right - Turret rotation<br/>E - Boost<br/>Q - Parachute<br/>Esc - Leave Shop<br/></div>
+				<div className="controls">{ this.renderControls() }</div>
 			</div>
 		);
     }

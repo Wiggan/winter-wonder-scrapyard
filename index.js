@@ -65,7 +65,7 @@ function getPrerequisiteEdges(id) {
 	return io.world.config.shop.edges.filter((edge) => { return edge.to === id });
 }
 
-function getCurrentShop(player) {
+global.getCurrentShop = function(player) {
 	shop = JSON.parse(JSON.stringify(io.world.config.shop));
 	shop.nodes.map((node) => { 
 		if (player.upgrades.includes(node.id)) {
@@ -169,6 +169,7 @@ io.on('connection', function(socket){
 				break;
 			case 202: // Handvetat kanontorn
 				socket.player.stats.towerRotation = true;
+				socket.player.hud.towerRotation = true;
 				break;
 			case 203: // Servokanontorn
 				socket.player.stats.towerRotationSpeed = item.towerRotationSpeed;
@@ -590,7 +591,7 @@ app.listen(3000, function(){
 									setTimeout(() => {
 										if(io.world.gameState.state != StateEnum.arena) {
 											var scrapPos = io.levelGenerator.getCollisionFreePosition();
-											io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, scrapCountAtDeath*5));
+											io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, Math.min(scrapCountAtDeath*5, 35)));
 											for(var i=0; i<scrapCountAtDeath; i++) {
 												io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-6, 6), scrapPos[1] - getRandomIntInclusive(-6, 6)]});
 											}
