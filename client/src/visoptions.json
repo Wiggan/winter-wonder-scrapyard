@@ -66,9 +66,13 @@
 		}
 	},
 	"interaction": {
+		"hover": true,
 		"dragView": false,
 		"selectConnectedEdges": false,
 		"dragNodes": false,
 		"zoomView": false
+	},
+	"physics": {
+		"enabled": true
 	}
 }

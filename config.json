@@ -4,6 +4,7 @@
 			{
 				"id": 1,
 				"label": "Dubbdäck",
+				"title": "Bättre grepp, mindre drift",
 				"cost": 1,
 				"level": 1,
 				"grip": 1.2
@@ -11,12 +12,14 @@
 			{
 				"id": 2,
 				"label": "Fri Rotation",
+				"title": "Stå still och snurra runt",
 				"cost": 1,
 				"level": 2
 			},
 			{
 				"id": 3,
 				"label": "Bättre svängradie",
+				"title": "Bättre svängradie helt enkelt. Mycket lättare att köra.",
 				"cost": 4,
 				"level": 3,
 				"rotationSpeed": 0.017
@@ -24,6 +27,7 @@
 			{
 				"id": 4,
 				"label": "Snabbare motor",
+				"title": "Bättre acceleration. Skjut ut motståndarna längre och var kom först till scrapsen!",
 				"cost": 3,
 				"level": 2,
 				"acc": 120
@@ -31,12 +35,14 @@
 			{
 				"id": 5,
 				"label": "Turboskjuts",
+				"title": "Aktivera turboskjuts för att få extra fart framåt.",
 				"cost": 3,
 				"level": 3
 			},
 			{
 				"id": 6,
 				"label": "Spikdäck",
+				"title": "Ännu bättre grepp, ännu mindre drift",
 				"cost": 4,
 				"level": 2,
 				"grip": 2
@@ -45,19 +51,29 @@
 			{
 				"id": 101,
 				"label": "Kofångare",
+				"title": "Skjut iväg motståndarna längre när du träffar med nosen.",
 				"cost": 1,
 				"level": 1
 			},
 			{
+				"id": 103,
+				"label": "Bromsskärm",
+				"title": "Aktivera för att sakta in och vända bilen.",
+				"cost": 3,
+				"level": 2
+			},
+			{
 				"id": 102,
 				"label": "Vinklad nos",
+				"title": "Chans att styra undan projektiler som träffar nosen.",
 				"cost": 4,
 				"level": 3,
 				"chance": 50
 			},
 			{
-				"id": 103,
+				"id": 105,
 				"label": "Pontoner",
+				"title": "Överlev längre ute till sjös.",
 				"cost": 2,
 				"level": 2,
 				"waterDefense": 15
@@ -65,45 +81,45 @@
 			{
 				"id": 104,
 				"label": "Skovelhjul",
+				"title": "Överlev ännu längre ute till sjös.",
 				"cost": 3,
 				"level": 3,
 				"waterDefense": 15
-			},
-			{
-				"id": 105,
-				"label": "Bromsskärm",
-				"cost": 3,
-				"level": 2
 			},
 			
 			{
 				"id": 201,
 				"label": "Raketgevär",
+				"title": "Skjut iväg motståndarna med raketer.",
 				"cost": 4,
 				"level": 1
 			},
 			{
 				"id": 202,
 				"label": "Handvetat kanontorn",
+				"title": "Sikta åt andra håll än framåt.",
 				"cost": 2,
-				"level": 1.5
+				"level": 2
 			},
 			{
 				"id": 203,
 				"label": "Servokanontorn",
+				"title": "Sikta snabbare.",
 				"cost": 3,
 				"level": 3,
-				"towerRotationSpeed": 2.2
+				"towerRotationSpeed": 2.4
 			},
 			{
 				"id": 204,
 				"label": "Trippelraket",
+				"title": "Skjut tre raketer istället för en.",
 				"cost": 6,
 				"level": 2
 			},
 			{
 				"id": 205,
 				"label": "Lasersikte",
+				"title": "Visar var du siktar.",
 				"cost": 2,
 				"level": 3
 			}
@@ -117,11 +133,10 @@
 		  {"from": 1, "to": 6},
 		  
 		  
-		  {"from": 101, "to": 105},
-		  {"from": 103, "to": 104},
-		  {"from": 6, "to": 104},
-		  {"from": 105, "to": 102},
 		  {"from": 101, "to": 103},
+		  {"from": 101, "to": 105},
+		  {"from": 105, "to": 104},
+		  {"from": 103, "to": 102},
 		  
 		  
 		  {"from": 201, "to": 202},
@@ -153,7 +168,7 @@
 		"stats": {
 			"acc": 80,
 			"friction": 20,
-			"bumperFactor": 2,
+			"bumperFactor": 1.7,
 			"boostForce": 10000,
 			"boostCooldownTime": 3000,
 			"parachuteCooldownTime": 5000,

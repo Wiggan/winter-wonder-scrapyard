@@ -352,6 +352,25 @@ class Game extends React.Component {
 		ctx.moveTo(-15, 0);
 		ctx.lineTo(15, 0);
 		ctx.fill();
+		ctx.moveTo(-15, 0);
+		ctx.restore();
+		ctx.lineTo(player.pos[0], player.pos[1]);
+		ctx.save();
+		ctx.translate(player.parachute.pos[0], player.parachute.pos[1]);
+		ctx.rotate(player.parachute.rotation);
+		ctx.moveTo(15, 0);
+		ctx.restore();
+		ctx.lineTo(player.pos[0], player.pos[1]);
+		ctx.stroke();
+		
+		ctx.save();
+		ctx.translate(player.parachute.pos[0], player.parachute.pos[1]);
+		ctx.rotate(player.parachute.rotation);
+		ctx.beginPath();
+		ctx.arc(0, 0, 15, 0, -Math.PI/3, true);
+		ctx.lineTo(0, 0);
+		ctx.arc(0, 0, 15, -Math.PI/3, -Math.PI/3*2, true);
+		ctx.lineTo(0, 0);
 		ctx.stroke();
 		ctx.restore();
 	}
@@ -493,6 +512,7 @@ class Game extends React.Component {
 			ctx.arc(0, 0, this.state.world.level.shop.radius/3, 0, 2 * Math.PI, false);
 			ctx.fill();
 			ctx.stroke();
+			ctx.save();
 			const boxCount = 6;
 			const boxSize = 16;
 			for(var i = 0; i<boxCount; i++) {
@@ -500,6 +520,13 @@ class Game extends React.Component {
 				ctx.fillRect(this.state.world.level.shop.radius-boxSize/2-4, -boxSize/2, boxSize, boxSize);
 				ctx.strokeRect(this.state.world.level.shop.radius-boxSize/2-4, -boxSize/2, boxSize, boxSize);
 			}
+			ctx.restore();
+			ctx.lineWidth = 1;
+			ctx.fillStyle = "rgb(100, 180, 250)";
+			ctx.font = "900 22px Arial";
+			ctx.textAlign = "center";
+			ctx.fillText("Shop", 0, -10);
+			ctx.strokeText("Shop", 0, -10);
 			ctx.restore();
 		}
 	}
@@ -596,6 +623,15 @@ class Game extends React.Component {
 		this.drawEffects(ctx);
 		this.drawNotification(ctx);
 		this.drawMessage(ctx);
+		//this.drawParachute(ctx, {
+		//	color: "red",
+		//	pos: [200, 200],
+		//	parachute: {
+		//		pos: [ 240, 240],
+		//		rotation: 3,
+		//	},
+		//
+		//});
 	}
 	
 	keydown(e) {

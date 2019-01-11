@@ -1,5 +1,6 @@
 ﻿import React from 'react';
-import './shop.css'
+import './shop.css';
+import './tooltip.css';
 import Graph from 'react-graph-vis';
 import Socket from './socket'
 var options = require('./visoptions.json')
@@ -48,8 +49,8 @@ class Shop extends React.Component {
 	}
 	
 	onNodeClicked(values, id, selected, hovering) {
-		this.network.Network.unselectAll();
 		if(selected) {
+			this.network.Network.unselectAll();
 			Socket.buy(id);
 		}
 	}
@@ -104,10 +105,10 @@ class Shop extends React.Component {
 	
 	componentDidUpdate() {
 		if (this.state.visible) {
-			this.network.Network.stabilize(5);
+			//this.network.Network.stabilize(1);
 			this.network.Network.fit();  // Fy fan.
 		}
-		// console.log(this.network);
+		//console.log(this.network);
 	}
 	
 	setVisible(visible) {

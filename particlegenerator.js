@@ -181,4 +181,34 @@ module.exports = class ParticleGenerator {
 		}
 		return blood;
 	}
+	
+	generateRocketTail(pos, vel) {
+		const speed = 1.5;
+		var brightness1 = getRandomIntInclusive(80,150);
+		var brightness2 = getRandomIntInclusive(80,150);
+		var rotation = dir2rad(vel) + Math.PI;
+		var rotataionOffset = Math.random()*0.6;
+		var dir1 = rad2dir(rotation + rotataionOffset);
+		var pos1 = add(copy(pos), mult(rad2dir(rotation), 7));
+		var dir2 = rad2dir(rotation - rotataionOffset);
+		//var pos2 = add(copy(pos), mult(rad2dir(rotation), 4));
+		return {
+			birth: Date.now(),
+			particles: [{
+				radius: getRandomIntInclusive(2, 4),
+				direction: dir1,
+				speed: speed,
+				pos: pos1,
+				color: "rgb("+brightness1+","+brightness1+","+brightness1+")",
+			}, {
+				radius: getRandomIntInclusive(2, 4),
+				direction: dir2,
+				speed: speed,
+				pos: copy(pos1),
+				color: "rgb("+brightness2+","+brightness2+","+brightness2+")",
+			}],
+			duration: 200,
+			progress: 0,
+		};
+	}
 }

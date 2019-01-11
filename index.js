@@ -55,7 +55,7 @@ Object.freeze(KeyEnum);
 
 
 
-function setScrapCount(socket, count) {
+global.setScrapCount = function(socket, count) {
 	socket.player.hud.scrap = count;
 	socket.emit('hud update', JSON.stringify(socket.player.hud));
 	socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
@@ -288,6 +288,44 @@ function getTimeLeft(timeout) { // Requires haxing in a _startTime = Date.now() 
     return Math.floor((timeout._startTime + timeout._idleTimeout - Date.now()) / 1000);
 }
 
+function damagePlayer(socket, damage) {
+	socket.player.hud.health -= damage;
+	socket.emit('hud update', JSON.stringify(socket.player.hud));
+	if(socket.player.hud.health <= 0) {
+		io.world.effects.push(io.particleGenerator.generateExplosion(socket.player.status.pos));
+		socket.player.status.alive = false;
+		switch(io.world.gameState.state) {
+			case StateEnum.arena:
+				var alivers = 0;
+				Object.values(io.sockets.sockets).map((socket2) => {
+					if(socket2.player.status.alive) alivers++;
+				});
+				setScrapCount(socket, socket.player.hud.scrap + alivers);
+				console.log("Rewarding player " + socket.player.hud.name + " " + alivers + " scrap");
+			break;
+			case StateEnum.normal:
+				var scrapCountAtDeath = socket.player.hud.scrap;
+				setScrapCount(socket, 0);
+				setTimeout(() => {
+					if(io.world.gameState.state != StateEnum.arena) {
+						var scrapPos = io.levelGenerator.getCollisionFreePosition();
+						io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, Math.min(scrapCountAtDeath*5, 35)));
+						for(var i=0; i<scrapCountAtDeath; i++) {
+							io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-6, 6), scrapPos[1] - getRandomIntInclusive(-6, 6)]});
+						}
+					}
+				}, 1000);
+			case StateEnum.lobby:
+				setTimeout(() => {
+					if(!socket.player.status.alive && io.world.gameState.state != StateEnum.arena) {
+						gameStateMachine.respawnPlayer(socket);
+					}
+				}, 2000);								
+			break;
+		}
+	}
+}
+
 app.listen(3000, function(){
     console.log('listening on *:3000');
 	
@@ -318,6 +356,7 @@ app.listen(3000, function(){
 								sub(socket1.player.status.vel, impact1);
 								if(socket1.player.stats.bumper && Math.abs(angle(impact1, rad2dir(socket1.player.status.rotation))) < 0.8) {
 									mult(impact1, socket1.player.stats.bumperFactor);
+									damagePlayer(socket2, 5);
 								}
 								add(socket2.player.status.vel, impact1);
 							}
@@ -327,6 +366,7 @@ app.listen(3000, function(){
 								sub(socket2.player.status.vel, impact2);
 								if(socket2.player.stats.bumper && Math.abs(angle(impact2, rad2dir(socket2.player.status.rotation))) < 0.8) {
 									mult(impact2, socket2.player.stats.bumperFactor);
+									damagePlayer(socket1, 5);
 								}
 								add(socket1.player.status.vel, impact2);
 							}
@@ -375,6 +415,7 @@ app.listen(3000, function(){
 							io.world.effects.push(io.particleGenerator.generateSmoke(projectile.pos, 1));
 						} else {
 							add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
+							damagePlayer(socket1, 10);
 							projectile.done = true;
 							io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));
 						}
@@ -571,41 +612,7 @@ app.listen(3000, function(){
 					
 					// Check if player is in water
 					if(io.levelGenerator.isInWater(socket.player.status.pos)) {
-						socket.player.hud.health -= elapsed * (io.world.config.parameters.waterDamage - socket.player.stats.waterDefense);
-						socket.emit('hud update', JSON.stringify(socket.player.hud));
-						if(socket.player.hud.health <= 0) {
-							io.world.effects.push(io.particleGenerator.generateExplosion(socket.player.status.pos));
-							socket.player.status.alive = false;
-							switch(io.world.gameState.state) {
-								case StateEnum.arena:
-									var alivers = 0;
-									Object.values(io.sockets.sockets).map((socket2) => {
-										if(socket2.player.status.alive) alivers++;
-									});
-									setScrapCount(socket, socket.player.hud.scrap + alivers);
-									console.log("Rewarding player " + socket.player.hud.name + " " + alivers + " scrap");
-								break;
-								case StateEnum.normal:
-									var scrapCountAtDeath = socket.player.hud.scrap;
-									setScrapCount(socket, 0);
-									setTimeout(() => {
-										if(io.world.gameState.state != StateEnum.arena) {
-											var scrapPos = io.levelGenerator.getCollisionFreePosition();
-											io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, Math.min(scrapCountAtDeath*5, 35)));
-											for(var i=0; i<scrapCountAtDeath; i++) {
-												io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-6, 6), scrapPos[1] - getRandomIntInclusive(-6, 6)]});
-											}
-										}
-									}, 1000);
-								case StateEnum.lobby:
-									setTimeout(() => {
-										if(!socket.player.status.alive && io.world.gameState.state != StateEnum.arena) {
-											gameStateMachine.respawnPlayer(socket);
-										}
-									}, 2000);								
-								break;
-							}
-						}
+						damagePlayer(socket, elapsed * (io.world.config.parameters.waterDamage - socket.player.stats.waterDefense));
 					}
 				}
 			});
@@ -649,6 +656,9 @@ app.listen(3000, function(){
 		});
 		io.world.level.critters = io.world.level.critters.filter((critter) => {
 			return critter.done !== true;
+		});
+		io.world.projectiles.map((projectile) => {
+			io.world.effects.push(io.particleGenerator.generateRocketTail(projectile.pos, projectile.vel));
 		});
 	}, 16.6666);
 	setInterval(() => {

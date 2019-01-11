@@ -98,8 +98,7 @@ module.exports = class GameStateMachine {
 			socket.player.status = Object.assign(socket.player.status, JSON.parse(JSON.stringify(this.io.world.config.player.status)));
 			socket.player.hud = Object.assign(socket.player.hud, JSON.parse(JSON.stringify(this.io.world.config.player.hud)));
 			socket.player.upgrades = [];
-			socket.emit('hud update', JSON.stringify(socket.player.hud));
-			// socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player))); // TODO make it io.shop.getCurrentShop
+			setScrapCount(socket, 0);
 		});
 	}
 	
@@ -194,9 +193,8 @@ module.exports = class GameStateMachine {
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
 		Object.values(this.io.sockets.sockets).map((socket) => {
 			this.respawnPlayer(socket);
-			socket.player.hud.scrap = 100;
 			socket.player.hud.ready = false;
-			socket.emit('hud update', JSON.stringify(socket.player.hud));
+			setScrapCount(socket, 100);
 		});
 		this.runCountDown("Entering Lobby");
 	}
