@@ -150,7 +150,7 @@ io.on('connection', function(socket){
 				socket.player.stats.nose = true;
 				socket.player.status.nose = true;
 				break;
-			case 103: // Pontoner
+			case 105: // Pontoner
 				socket.player.status.pontons = true;
 				socket.player.stats.waterDefense += item.waterDefense;
 				break;
@@ -158,7 +158,7 @@ io.on('connection', function(socket){
 				socket.player.status.paddle = true;
 				socket.player.stats.waterDefense += item.waterDefense;
 				break;
-			case 105: // Bromsskärm
+			case 103: // Bromsskärm
 				socket.player.stats.parachute = true;
 				socket.player.hud.parachute = true;
 				break;

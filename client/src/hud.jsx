@@ -140,47 +140,66 @@ class HUD extends React.Component {
 		}
 	}
 	
+	renderHealth() {
+		return (
+			<tr>
+			<td className="property" width="50%">Health:</td>
+			<td width="50%"><meter value={ this.state.hud.health } max="100" high="75" low="25" optimum="100"/></td>
+			</tr>
+		);
+	}
+	
 	renderRocketCooldown() {
 		if(this.state.hud.rockets === true) {
 			return (
-				<div className="property">Rocket: <meter value={ this.state.rocketProgress } min="0" max="1"/></div>
+				<tr>
+				<td className="property" width="50%">Rocket:</td>
+				<td width="50%"><meter value={ this.state.rocketProgress } min="0" max="1"/></td>
+				</tr>
 			);
 		} else {
 			return (
-				<div></div>
+				<tr></tr>
 			);
 		}
 	}
 	renderBoostCooldown() {
 		if(this.state.hud.boost === true) {
 			return (
-				<div className="property">Boost: <meter value={ this.state.boostProgress } min="0" max="1"/></div>
+				<tr>
+				<td className="property" width="50%">Boost:</td>
+				<td width="50%"><meter value={ this.state.boostProgress } min="0" max="1"/></td>
+				</tr>
 			);
 		} else {
 			return (
-				<div></div>
+				<tr></tr>
 			);
 		}
 	}
 	renderParachuteCooldown() {
 		if(this.state.hud.parachute === true) {
 			return (
-				<div className="property">Parachute: <meter value={ this.state.parachuteProgress } min="0" max="1"/></div>
+				<tr>
+				<td className="property" width="50%">Parachute:</td>
+				<td width="50%"><meter value={ this.state.parachuteProgress } min="0" max="1"/></td>
+				</tr>
 			);
 		} else {
 			return (
-				<div></div>
+				<tr></tr>
 			);
 		}
 	}
 	
 	renderCooldowns() {
 		return (
-			<div>
+			<table>
+				{this.renderHealth()}
 				{this.renderRocketCooldown()}
 				{this.renderBoostCooldown()}
 				{this.renderParachuteCooldown()}
-			</div>
+			</table>
 		);
 	}
 	
@@ -233,7 +252,6 @@ class HUD extends React.Component {
 				<div className="self">
 					<div className="state">{this.renderState()}</div>
 					<div className="name" style={{ color: this.state.hud.color }} >{this.state.hud.name}</div>
-					<div className="property">Health: <meter value={ this.state.hud.health } max="100" high="75" low="25" optimum="100"/></div>
 					<div>{this.renderCooldowns()}</div>
 					<div className="property">Scrap: {this.state.hud.scrap}</div>
 					<div>{ this.renderReadyButton() }</div>

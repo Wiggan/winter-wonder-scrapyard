@@ -18,7 +18,7 @@
     font-size: 18px;
 }
 .controls {
-border: 2px solid white;
+	border: 2px solid white;
 	padding: 10px;
 	color: grey;
     font-size: 12px;
@@ -28,7 +28,6 @@ border: 2px solid white;
 	border: 2px solid white;
 	padding: 10px;
     font-size: 14px;
-	
 	width: 100%;
 }
 .playername {
@@ -43,6 +42,5 @@ th {
 	text-align: left;
 }
 meter {
-	float: right;
-	margin: 3px;
+	margin: 4px;
 }
