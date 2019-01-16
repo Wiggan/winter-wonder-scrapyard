@@ -37,13 +37,13 @@ class Shop extends React.Component {
 
 	keydown(e) {
 		Socket.keydown(e.keyCode);
-		if(e.keyCode != 116) {
+		if(e.keyCode !== 116) {
 			e.preventDefault();
 		}
 	}
 	keyup(e) {
 		Socket.keyup(e.keyCode);
-		if(e.keyCode != 116) {
+		if(e.keyCode !== 116) {
 			e.preventDefault();
 		}
 	}
@@ -57,7 +57,6 @@ class Shop extends React.Component {
 	
 	onShop(msg) {
 		var data = JSON.parse(msg);
-		console.log(data);
 		var nodes = data.nodes;
 		nodes.map((item) => {
 			item.color = {background: options.nodes.color.background};

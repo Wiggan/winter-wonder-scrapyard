@@ -34,7 +34,7 @@ class HUD extends React.Component {
 	onCoolDown(msg) {
 		console.log(msg);
 		var cooldown = JSON.parse(msg);
-		if(cooldown.item == "rocket") {
+		if(cooldown.item === "rocket") {
 			this.rocketCooldown = cooldown.time;
 			this.rocketCooldownElapsed = 0;
 			this.rocketInterval = setInterval(() => {
@@ -44,7 +44,7 @@ class HUD extends React.Component {
 				});
 				if(this.state.rocketProgress >= 1) clearInterval(this.rocketInterval);
 			}, 16.666);
-		} else if(cooldown.item == "boost") {
+		} else if(cooldown.item === "boost") {
 			this.boostCooldown = cooldown.time;
 			this.boostCooldownElapsed = 0;
 			this.boostInterval = setInterval(() => {
@@ -54,7 +54,7 @@ class HUD extends React.Component {
 				});
 				if(this.state.boostProgress >= 1) clearInterval(this.boostInterval);
 			}, 16.666);
-		} else if(cooldown.item == "parachute") {
+		} else if(cooldown.item === "parachute") {
 			this.parachuteCooldown = cooldown.time;
 			this.parachuteCooldownElapsed = 0;
 			this.parachuteInterval = setInterval(() => {
@@ -66,29 +66,39 @@ class HUD extends React.Component {
 			}, 16.666);
 		}	
 	}
+	
+	setScrapColor(color) {
+		var newState = this.state;
+		newState.scrapColor = color; 
+		this.setState(newState); 
+	}
+	
 	onHudUpdate(hud) {
 		var newHud = JSON.parse(hud);
 		if(this.state.hud.scrap < newHud.scrap) {
-			this.state.scrapColor = "green";
-			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 100);
-			setTimeout(() => { this.state.scrapColor = "green"; this.setState(this.state); }, 200);
-			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 300);
-			setTimeout(() => { this.state.scrapColor = "green"; this.setState(this.state); }, 400);
-			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 500);
-			setTimeout(() => { this.state.scrapColor = "green"; this.setState(this.state); }, 600);
-			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 700);
+			this.setScrapColor("green");
+			setTimeout(() => { this.setScrapColor("white"); }, 100);
+			setTimeout(() => { this.setScrapColor("green"); }, 200);
+			setTimeout(() => { this.setScrapColor("white"); }, 300);
+			setTimeout(() => { this.setScrapColor("green"); }, 400);
+			setTimeout(() => { this.setScrapColor("white"); }, 500);
+			setTimeout(() => { this.setScrapColor("green"); }, 600);
+			setTimeout(() => { this.setScrapColor("white"); }, 700);
 		}
-		this.state.hud = newHud;
-		this.setState(this.state);
+		var newState = this.state;
+		newState.hud = newHud;
+		this.setState(newState);
 	} 
 	onGameUpdate(game) {
-		this.state.game = JSON.parse(game);
-		this.setState(this.state);
+		var newState = this.state;
+		newState.game = JSON.parse(game);
+		this.setState(newState);
 	}
 	onCountdownStarted(time) {
 		console.log("Got coutdown: " + time + " in state: " + this.state.game.state);
-		this.state.timeleft = time;
-		this.setState(this.state);
+		var newState = this.state;
+		newState.timeleft = time;
+		this.setState(newState);
 	}
 	componentDidMount() {
 		Socket.addOnHudUpdate(this.onHudUpdate.bind(this));
@@ -96,15 +106,16 @@ class HUD extends React.Component {
 		Socket.addOnGameUpdate(this.onGameUpdate.bind(this));
 		Socket.setOnCountdownStarted(this.onCountdownStarted.bind(this));
 		this.countdownInterval = setInterval(() => {
-			this.state.timeleft -= 1;
-			this.setState(this.state);
+			var newState = this.state;
+			newState.timeleft -= 1;
+			this.setState(newState);
 		}, 1000);
 		Socket.getHud();
 	}
 	
 	renderPlayer(player) {
 		return(
-			<tr style={{ color: player.color }}>
+			<tr key={player.name} style={{ color: player.color }}>
 				<td className="playername" style={{width: '80%'}}>{ player.name }</td>
 				<td className="playername" style={{width: '20%'}}>{ player.score }</td>
 				<td className="playername" style={{width: '20%'}}>{ player.ready ? "X" : "" }</td>
@@ -114,12 +125,12 @@ class HUD extends React.Component {
 	
 	renderScoreBoard() {
 		return (
-			<table className="scoreboard">
+			<table className="scoreboard"><tbody>
 			<tr>
 				<th>Name</th><th>Score</th><th>Ready</th>
 			</tr>
 			{this.state.game.playerStates.map((player) => { return this.renderPlayer(player) })}
-			</table>
+			</tbody></table>
 		);
 	}
 	
@@ -207,37 +218,34 @@ class HUD extends React.Component {
 	
 	renderCooldowns() {
 		return (
-			<table>
+			<table><tbody>
 				{this.renderHealth()}
 				{this.renderRocketCooldown()}
 				{this.renderBoostCooldown()}
 				{this.renderParachuteCooldown()}
-			</table>
+			</tbody></table>
 		);
 	}
 	
 	renderState() {
 		switch(this.state.game.state) {
+			default:
 			case StateEnum.lobby:
 				return (
 				<div>Lobby</div>
 				);
-				break;
 			case StateEnum.normal:
 				return (
 				<div>Collect & Buy</div>
 				);
-				break;
 			case StateEnum.shopping:
 				return (
 				<div>Prepare for arena!</div>
 				);
-				break;
 			case StateEnum.arena:
 				return (
 				<div>Arena</div>
 				);
-				break;
 		}
 	}
 	

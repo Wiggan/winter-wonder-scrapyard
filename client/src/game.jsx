@@ -1,5 +1,6 @@
 import React from 'react';
 import Socket from './socket'
+import Controllers from './controllers'
 import Shop from './shop'
 import './game.css'
 
@@ -8,9 +9,9 @@ var add = require('vectors/add')(2);
 var div = require('vectors/div')(2);
 var sub = require('vectors/sub')(2);
 var copy = require('vectors/copy')(2);
-var norm = require('vectors/normalize')(2);
-var lerp = require('vectors/lerp')(2);
-var mag = require('vectors/mag')(2);
+//var norm = require('vectors/normalize')(2);
+//var lerp = require('vectors/lerp')(2);
+//var mag = require('vectors/mag')(2);
 var dot = require('vectors/dot')(2);
 var dist = require('vectors/dist')(2);
 
@@ -146,7 +147,7 @@ class Game extends React.Component {
 			var origShadowColor = ctx.shadowColor;
 			ctx.shadowColor = "rgb(50, 50, 50)";
 			ctx.shadowBlur = 16;
-			this.state.world.level.rocks.map((rock) => {
+			this.state.world.level.rocks.forEach((rock) => {
 				ctx.beginPath();
 				ctx.arc(rock.pos[0], rock.pos[1], rock.radius, 0, 2 * Math.PI, false);
 				ctx.fill();
@@ -313,7 +314,7 @@ class Game extends React.Component {
 		gradient.addColorStop("0.1", "rgba(255, 0, 0, 0.75)");
 		gradient.addColorStop("1.0", "rgba(255, 0, 0, 0.0)");
 		if(this.state.world.level !== undefined) {
-			this.state.world.level.rocks.map((rock) => {
+			this.state.world.level.rocks.forEach((rock) => {
 				if (dist(rock.pos, start) - rock.radius < length ) {
 					var point = getClosestPointOnSegment(start, stop, rock.pos);
 					var offsetFromRockCenter = dist(point, rock.pos);
@@ -324,7 +325,7 @@ class Game extends React.Component {
 					}
 				}
 			});
-			this.state.world.players.map((other) => {
+			this.state.world.players.forEach((other) => {
 				var playerRadius = other.size[0] - 3;
 				if (dist(other.pos, start) - playerRadius < length && other !== player) {
 					var point = getClosestPointOnSegment(start, stop, other.pos);
@@ -393,7 +394,7 @@ class Game extends React.Component {
 	}
 	
 	drawPlayers(ctx, ctx2, ctx3) {
-		this.state.world.players.map((player) => {
+		this.state.world.players.forEach((player) => {
 			if(player.alive) {
 				ctx.save();
 				ctx.translate(player.pos[0], player.pos[1]);
@@ -495,7 +496,7 @@ class Game extends React.Component {
 		ctx2.fillStyle = 'grey';
 		
 		ctx.globalAlpha = 0.7;
-		this.state.world.critters.map((critter) => {
+		this.state.world.critters.forEach((critter) => {
 			ctx.save();
 			ctx.translate(critter.pos[0], critter.pos[1]);
 			ctx.rotate(critter.rotation);
@@ -569,7 +570,7 @@ class Game extends React.Component {
 	}
 	
 	drawScraps(ctx) {
-		this.state.world.scraps.map((scrap) => {
+		this.state.world.scraps.forEach((scrap) => {
 			ctx.save();
 			ctx.fillStyle = "rgb(190, 190, 190)";
 			ctx.strokeStyle = "rgb(100, 100, 100)";
@@ -584,7 +585,7 @@ class Game extends React.Component {
 	}
 	
 	drawProjectiles(ctx) {
-		this.state.world.projectiles.map((projectile) => {
+		this.state.world.projectiles.forEach((projectile) => {
 			ctx.save();
 			ctx.fillStyle = "rgb(220, 40, 40)";
 			ctx.translate(projectile.pos[0], projectile.pos[1]);
@@ -596,9 +597,9 @@ class Game extends React.Component {
 	
 	drawEffects(ctx) {
 		ctx.strokeStyle = "black";
-		this.state.world.effects.map((effect) => {
+		this.state.world.effects.forEach((effect) => {
 			ctx.globalAlpha = (1-effect.progress) * 0.7;
-			effect.particles.map((particle) => {
+			effect.particles.forEach((particle) => {
 				ctx.fillStyle = particle.color;
 				ctx.beginPath();
 				ctx.arc(particle.pos[0], particle.pos[1], particle.radius, 0, 2 * Math.PI, false);
@@ -608,7 +609,7 @@ class Game extends React.Component {
 		});
 		ctx.globalAlpha = 1;
 		ctx.restore();
-		this.state.world.players.map((player) => {
+		this.state.world.players.forEach((player) => {
 			if(player.alive) {
 				if(player.laser === true) {
 					this.drawLaser(ctx, player);
@@ -671,64 +672,55 @@ class Game extends React.Component {
 		//});
 	}
 	
-	keydown(e) {
-		Socket.keydown(e.keyCode);
-		if(e.keyCode != 116) {
-			e.preventDefault();
-		}
-	}
-	keyup(e) {
-		Socket.keyup(e.keyCode);
-		if(e.keyCode != 116) {
-			e.preventDefault();
-		
-		}
-	}
-	
 	onWorldUpdate(msg) {
 		var update = JSON.parse(msg);
-		this.state.world.players = update.players;
-		this.state.world.projectiles = update.projectiles;
-		this.state.world.scraps = update.scraps;
-		this.state.world.effects = update.effects;
-		this.state.world.critters = update.critters;
+		var newWorld = this.state.world;
+		newWorld.players = update.players;
+		newWorld.projectiles = update.projectiles;
+		newWorld.scraps = update.scraps;
+		newWorld.effects = update.effects;
+		newWorld.critters = update.critters;
 		this.setState({
-			world: this.state.world
+			world: newWorld
 		});
 	}
 	
 	onNewMap(msg) {
-		console.log("Got new map!");
 		var level = JSON.parse(msg);
-		this.state.world.level = level;
-		this.renderMap(this.bgcanvas.getContext("2d"), this.mapcanvas.getContext("2d"));
+		var newWorld = this.state.world;
+		newWorld.level = level;
 		this.setState({
-			world: this.state.world
+			world: newWorld
 		});
+		this.renderMap(this.bgcanvas.getContext("2d"), this.mapcanvas.getContext("2d"));
 		
 	}
 	onGameUpdate(msg) {
 		var game = JSON.parse(msg);
-		this.state.world.msg = game.msg;
-		this.setState(this.state);
+		var newWorld = this.state.world;
+		newWorld.msg = game.msg;
+		this.setState({
+			world: newWorld
+		});
 	}
 	onHudUpdate(msg) {
 		var hud = JSON.parse(msg);
-		this.state.world.notification = hud.notification;
-		if(this.shop && hud.shopping != this.shop.state.visible) {
+		var newWorld = this.state.world;
+		newWorld.notification = hud.notification;
+		if(this.shop && hud.shopping !== this.shop.state.visible) {
 			this.shop.setVisible(hud.shopping);
 		}
-		this.setState(this.state);
+		this.setState({
+			world: newWorld
+		});
 	} 
 	
 	componentDidMount(){
-		console.log(this.shop);
 		Socket.setOnWorldUpdate(this.onWorldUpdate.bind(this));
 		Socket.setOnNewMap(this.onNewMap.bind(this));
 		Socket.addOnGameUpdate(this.onGameUpdate.bind(this));
 		Socket.addOnHudUpdate(this.onHudUpdate.bind(this));
-		window.addEventListener('keydown', this.keydown, true);
-		window.addEventListener('keyup', this.keyup, true);
+		Controllers.setup();
 		var intervalId = setInterval(this.update.bind(this), 16.666);
 		this.setState({ intervalId: intervalId });
 	}
