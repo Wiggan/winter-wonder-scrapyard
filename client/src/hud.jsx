@@ -6,7 +6,8 @@ var StateEnum = {
 	lobby: 1,
 	normal: 2,
 	arena: 3,
-	transition: 4
+	transition: 4,
+	shopping: 5
 };
 Object.freeze(StateEnum);
 
@@ -26,6 +27,7 @@ class HUD extends React.Component {
 			rocketProgress: 1,
 			boostProgress: 1,
 			parachuteProgress: 1,
+			scrapColor: "white",
 		};
 	}
 
@@ -65,7 +67,18 @@ class HUD extends React.Component {
 		}	
 	}
 	onHudUpdate(hud) {
-		this.state.hud = JSON.parse(hud);
+		var newHud = JSON.parse(hud);
+		if(this.state.hud.scrap < newHud.scrap) {
+			this.state.scrapColor = "green";
+			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 100);
+			setTimeout(() => { this.state.scrapColor = "green"; this.setState(this.state); }, 200);
+			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 300);
+			setTimeout(() => { this.state.scrapColor = "green"; this.setState(this.state); }, 400);
+			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 500);
+			setTimeout(() => { this.state.scrapColor = "green"; this.setState(this.state); }, 600);
+			setTimeout(() => { this.state.scrapColor = "white"; this.setState(this.state); }, 700);
+		}
+		this.state.hud = newHud;
 		this.setState(this.state);
 	} 
 	onGameUpdate(game) {
@@ -215,6 +228,11 @@ class HUD extends React.Component {
 				<div>Collect & Buy</div>
 				);
 				break;
+			case StateEnum.shopping:
+				return (
+				<div>Prepare for arena!</div>
+				);
+				break;
 			case StateEnum.arena:
 				return (
 				<div>Arena</div>
@@ -253,7 +271,7 @@ class HUD extends React.Component {
 					<div className="state">{this.renderState()}</div>
 					<div className="name" style={{ color: this.state.hud.color }} >{this.state.hud.name}</div>
 					<div>{this.renderCooldowns()}</div>
-					<div className="property">Scrap: {this.state.hud.scrap}</div>
+					<div className="property" style={{ color: this.state.scrapColor }}>Scrap: {this.state.hud.scrap}</div>
 					<div>{ this.renderReadyButton() }</div>
 					<div>{ this.renderCountdown() }</div>
 				</div>

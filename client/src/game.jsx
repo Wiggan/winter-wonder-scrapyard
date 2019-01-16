@@ -16,6 +16,7 @@ var dist = require('vectors/dist')(2);
 
 const width = 800;
 const height = 600;
+const debug = false;
 
 function getClosestPointOnSegment(start, stop, point) {
 	var segment = sub(copy(stop), start);
@@ -208,21 +209,37 @@ class Game extends React.Component {
 		ctx.restore();
 	}
 	
-	drawBody(ctx, size, color) {
-		ctx.fillStyle = color;
-		ctx.fillRect(-size[0]/2, -size[1]/2, size[0], size[1]);
+	drawRichness(ctx, player) {
 		
+		ctx.fillStyle = "rgb(30, 30, 30)";
+		ctx.fillRect(-player.size[0]/2 + 4, -player.size[1]/2 + 1, player.size[0] - 8, 2);
+		
+		var origShadowColor = ctx.shadowColor;
+		ctx.shadowColor = "rgb(230, 200, 100)";
+		ctx.shadowBlur = 10;
+		ctx.fillStyle = "rgb(200, 180, 70)";
+		ctx.fillRect(-player.size[0]/2 + 4, -player.size[1]/2 + 1, Math.min(player.richness, player.size[0] - 8), 2);
+		ctx.shadowColor = origShadowColor;
+		
+		ctx.globalAlpha = 0.6;
+		ctx.globalAlpha = 1;
+	}
+	
+	drawBody(ctx, player) {
+		ctx.fillStyle = player.color;
+		ctx.fillRect(-player.size[0]/2, -player.size[1]/2, player.size[0], player.size[1]);
 		ctx.globalAlpha = 0.5;
 		ctx.fillStyle = "white";
 		ctx.strokeStyle = "black";
 		ctx.beginPath();
-		ctx.moveTo(-size[0]/2, -size[1]/2);
+		ctx.moveTo(-player.size[0]/2, -player.size[1]/2);
 		ctx.lineTo(0, 0);
-		ctx.lineTo(size[0]/2, -size[1]/2);
+		ctx.lineTo(player.size[0]/2, -player.size[1]/2);
 		ctx.fill();
 		ctx.globalAlpha = 0.7;
 		ctx.stroke();
 		ctx.globalAlpha = 1;
+		
 	}
 	
 	drawRocketLauncher(ctx, towerrotation, tripple) {
@@ -402,7 +419,7 @@ class Game extends React.Component {
 				this.drawTires(ctx3, player.size, [player.tiresize[0]-3,player.tiresize[1]-3], false, false, player.driving, player.turning);
 				ctx3.restore();
 				
-				this.drawBody(ctx, player.size, player.color);
+				this.drawBody(ctx, player);
 				this.drawTires(ctx, player.size, player.tiresize, player.dubbs, player.spikes, player.driving, player.turning);
 				if(player.rockets) {
 					this.drawRocketLauncher(ctx, player.towerrotation, player.tripple);
@@ -417,7 +434,27 @@ class Game extends React.Component {
 				if(player.nose === true) {
 					this.drawNose(ctx, player);
 				}
+				this.drawRichness(ctx, player);
+				
 				ctx.restore();
+				if(debug) {
+					ctx.beginPath();
+					ctx.arc(player.pos[0], player.pos[1], player.size[0], 0, Math.PI*2, false);
+					ctx.globalAlpha = 0.5;
+					ctx.fillStyle = "red";
+					ctx.fill();
+					ctx.globalAlpha = 1;
+					ctx.beginPath();
+					ctx.moveTo(player.pos[0], player.pos[1]);
+					ctx.lineTo(player.vel[0] + player.pos[0], player.vel[1] + player.pos[1]);
+					ctx.stroke();
+					ctx.strokeStyle = "green";
+					ctx.beginPath();
+					ctx.moveTo(player.pos[0], player.pos[1]);
+					var dir = mult(rad2dir(player.rotation), 30);
+					ctx.lineTo(dir[0] + player.pos[0], dir[1] + player.pos[1]);
+					ctx.stroke();
+				}
 				
 				if(this.outsideScreen(player.pos)) {
 					const arrowRadius = 15;
@@ -552,7 +589,7 @@ class Game extends React.Component {
 			ctx.fillStyle = "rgb(220, 40, 40)";
 			ctx.translate(projectile.pos[0], projectile.pos[1]);
 			ctx.rotate(projectile.rotation);
-			ctx.fillRect(-2, -2, 4, 4);
+			ctx.fillRect(-2, -3, 4, 6);
 			ctx.restore();
 		});
 	}

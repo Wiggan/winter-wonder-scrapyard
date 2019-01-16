@@ -34,7 +34,7 @@ var gameStateMachine = new (require('./gamestatemachine.js'))(io);
 var Particle = require('./particlegenerator.js');
 io.particleGenerator = new Particle();
 
-
+const physicsInterval = 0.007;
 
 var connectionCount = 0;
 
@@ -57,6 +57,7 @@ Object.freeze(KeyEnum);
 
 global.setScrapCount = function(socket, count) {
 	socket.player.hud.scrap = count;
+	socket.player.status.richness = Math.floor(count / 2);
 	socket.emit('hud update', JSON.stringify(socket.player.hud));
 	socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
 }
@@ -209,7 +210,9 @@ io.on('connection', function(socket){
 				if(socket.player.hud.shopping === true) {
 					socket.player.hud.shopping = false;
 					socket.emit('hud update', JSON.stringify(socket.player.hud));
-					setTimeout(() => { gameStateMachine.respawnPlayer(socket); }, 1000);
+					if(io.world.gameState.state !== StateEnum.shopping) {
+						setTimeout(() => { gameStateMachine.respawnPlayer(socket); }, 1000);
+					}
 				}
 			break;
 			default:
@@ -332,158 +335,11 @@ app.listen(3000, function(){
 	gameStateMachine.startLobby();
 	
     setInterval(() => {
-		var elapsed = 0.016666; // Fix this
+		var startTime = Date.now();
+		var elapsed = physicsInterval; // Fix this
 		if(io.world.gameState.physicsOn) {
-			// Collision
-			Object.values(io.sockets.sockets).map((socket1) => {
-				// fast forward inner loop, to avoid duplicate pairs.
-				var ff = false;
-				var pos1 = socket1.player.status.pos;
-				Object.values(io.sockets.sockets).map((socket2) => {
-					if(socket1 == socket2) { ff = true; };
-					if(ff) {
-						var pos2 = socket2.player.status.pos;
-						var distance = dist(pos1, pos2);
-						var radii = socket2.player.status.size[0]*2;
-						if (socket1 != socket2 && socket1.player.status.alive===true && socket2.player.status.alive===true && distance < radii) {
-							var direction = norm(sub(copy(pos2), pos1));
-							var vel1 = copy(socket1.player.status.vel);
-							var vel2 = copy(socket2.player.status.vel);
-							var impact1 = [0, 0];
-							var impact2 = [0, 0];
-							if(mag(vel1) > 0.1) {
-								impact1 = mult(copy(direction), scalarProjection(vel1, copy(direction)));
-								sub(socket1.player.status.vel, impact1);
-								if(socket1.player.stats.bumper && Math.abs(angle(impact1, rad2dir(socket1.player.status.rotation))) < 0.8) {
-									mult(impact1, socket1.player.stats.bumperFactor);
-									damagePlayer(socket2, 5);
-								}
-								add(socket2.player.status.vel, impact1);
-							}
-							if (mag(vel2) > 0.1) {
-								var opposite = mult(copy(direction), -1);
-								impact2 = mult(copy(opposite), scalarProjection(vel2, opposite));
-								sub(socket2.player.status.vel, impact2);
-								if(socket2.player.stats.bumper && Math.abs(angle(impact2, rad2dir(socket2.player.status.rotation))) < 0.8) {
-									mult(impact2, socket2.player.stats.bumperFactor);
-									damagePlayer(socket1, 5);
-								}
-								add(socket1.player.status.vel, impact2);
-							}
-							
-							moveback1 = (radii - distance) * mag(impact1) / (mag(impact1) + mag(impact2));
-							moveback2 = -(radii - distance) * mag(impact2) / (mag(impact1) + mag(impact2));
-							
-							sub(socket1.player.status.pos, mult(copy(direction), moveback1));
-							sub(socket2.player.status.pos, mult(copy(direction), moveback2));
-							
-							if (mag(vel1) + mag(vel2) > 10) {
-								io.world.effects.push(io.particleGenerator.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
-							}
-							
-						}
-					}
-				});
-				
-				// Collision with rocks
-				io.world.level.rocks.map((rock) => {
-					var distance = dist(socket1.player.status.pos, rock.pos);
-					var radii = socket1.player.status.size[0] + rock.radius;
-					if (distance < radii) {
-						var direction = norm(sub(copy(socket1.player.status.pos), rock.pos));
-						var component = mult(copy(direction), scalarProjection(socket1.player.status.vel, copy(direction))*1.8);
-						sub(socket1.player.status.vel, component);
-						sub(socket1.player.status.pos, mult(norm(copy(component)), radii - distance));
-						if(mag(component) > 100) {
-							io.world.effects.push(io.particleGenerator.generateSmoke(add(copy(rock.pos), mult(copy(direction), rock.radius)),mag(component)/300));
-							
-						}
-					}
-				});
-				
-				// Collision with projectiles
-				io.world.projectiles.map((projectile) => {
-					var pos2 = projectile.pos;
-					if (socket1.player.status.id != projectile.owner && dist(pos1, pos2) < socket1.player.status.size[0]) {
-						var direction = norm(copy(projectile.vel));
-						if(socket1.player.stats.nose && Math.abs(angle(direction, rad2dir(socket1.player.status.rotation + Math.PI))) < 0.6 && Math.random() < 0.5) {
-							console.log("Deflected! Incoming angle: " + Math.abs(angle(direction, rad2dir(socket1.player.status.rotation + Math.PI))));
-							var magnitude = mag(projectile.vel);
-							var newDirection = norm(rad2dir(dir2rad(projectile.vel) + (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2)));
-							projectile.vel = mult(copy(newDirection), magnitude);
-							projectile.pos = add(copy(pos1), mult(copy(newDirection), socket1.player.status.size[0] + 1));
-							io.world.effects.push(io.particleGenerator.generateSmoke(projectile.pos, 1));
-						} else {
-							add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
-							damagePlayer(socket1, 10);
-							projectile.done = true;
-							io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));
-						}
-					}
-				});
-				
-				// Collision with scrap
-				io.world.scraps.map((scrap) => {
-					if (dist(pos1, scrap.pos) < socket1.player.status.size[1]) {
-						setScrapCount(socket1, socket1.player.hud.scrap + 1);
-						io.world.effects.push(io.particleGenerator.generateGold(scrap.pos));
-						scrap.done = true;
-					}
-				});
-				
-				// Collision with critters
-				io.world.level.critters.map((critter) => {
-					if (dist(pos1, critter.pos) < socket1.player.status.size[1]) {
-						io.world.effects.push(io.particleGenerator.generateBlood(critter.pos, socket1.player.status.vel));
-						io.world.effects.push(io.particleGenerator.generateBloodStain(critter.pos));
-						critter.done = true;
-					}
-				});
-				
-				// Parachute effective 
-				if(socket1.player.status.parachute) {
-					add(socket1.player.status.parachute.pos, mult(copy(socket1.player.status.parachute.vel), elapsed));
-					if(dist(socket1.player.status.parachute.pos, socket1.player.status.pos) > 50 && !socket1.player.status.parachute.effective) {
-						socket1.player.status.parachute.effective = true;
-						mult(socket1.player.status.vel, 0.4);
-						socket1.player.status.parachute.vel = copy(socket1.player.status.vel);
-						socket1.player.status.rotation = dir2rad(sub(copy(socket1.player.status.parachute.pos), socket1.player.status.pos));
-						socket1.player.status.parachute.rotation = dir2rad(sub(copy(socket1.player.status.pos), socket1.player.status.parachute.pos));
-						setTimeout(() => { socket1.player.status.parachute = undefined; }, 300);
-					}
-				}
-				
-				// Is shopping?
-				if(io.world.level.shop !== undefined) {
-					if(socket1.player.status.alive===true && dist(pos1, io.world.level.shop.pos) < io.world.level.shop.radius) {
-						if(socket1.player.hud.shopping === false) {
-							socket1.player.hud.shopping = true;
-							socket1.player.hud.health = 100;
-							socket1.player.status.alive = false;
-							socket1.player.status.vel = [0, 0];
-							socket1.player.status.pos = copy(io.world.level.shop.pos);
-							socket1.emit('hud update', JSON.stringify(socket1.player.hud));
-						}
-					}
-				}
-				
-			});
-			
-			// Move projectiles and kill them if too far away
-			io.world.projectiles.map((projectile) => {
-				add(projectile.pos, mult(copy(projectile.vel), elapsed));
-				if (mag(projectile.pos) > 2000) {
-					projectile.done = true;
-				}
-			});
-			
-			// Move critters
-			io.world.level.critters.map((critter) => {
-				add(critter.vel, mult(copy(critter.acc), elapsed));
-				add(critter.pos, mult(copy(critter.vel), elapsed));
-				critter.rotation = dir2rad(critter.vel);
-			});
-			
+		
+			// Handle input
 			Object.values(io.sockets.sockets).map((socket) => {
 					if(socket.player.status.alive) {
 					// Get forward and sideway velocity components	
@@ -586,8 +442,9 @@ app.listen(3000, function(){
 						sub(force, mult(sideComponent, socket.player.stats.grip));
 						
 						if(mag(sideComponent) > 30) {
-							if(Date.now() % 100 < 20) {
+							if(!socket.player.lastDustEmittedTime || Date.now() - socket.player.lastDustEmittedTime > 50) {
 								io.world.effects.push(io.particleGenerator.generateDust(socket.player.status.pos, sideComponent));
+								socket.player.lastDustEmittedTime = Date.now();
 							}
 						}
 						
@@ -616,6 +473,162 @@ app.listen(3000, function(){
 					}
 				}
 			});
+		
+			// Collision
+			Object.values(io.sockets.sockets).map((socket1) => {
+			
+				// Collision with rocks
+				io.world.level.rocks.map((rock) => {
+					var distance = dist(socket1.player.status.pos, rock.pos);
+					var radii = socket1.player.status.size[0] + rock.radius;
+					if (distance < radii) {
+						var direction = norm(sub(copy(socket1.player.status.pos), rock.pos));
+						var component = mult(copy(direction), scalarProjection(socket1.player.status.vel, copy(direction))*1.8);
+						sub(socket1.player.status.vel, component);
+						sub(socket1.player.status.pos, mult(norm(copy(component)), radii - distance + 1));  // Offset size?
+						if(mag(component) > 100) {
+							io.world.effects.push(io.particleGenerator.generateSmoke(add(copy(rock.pos), mult(copy(direction), rock.radius)),mag(component)/300));
+							
+						}
+					}
+				});
+				
+				// Collision with players
+				// fast forward inner loop, to avoid duplicate pairs.
+				var ff = false;
+				var pos1 = socket1.player.status.pos;
+				Object.values(io.sockets.sockets).map((socket2) => {
+					if(socket1 == socket2) { ff = true; };
+					if(ff) {
+						var pos2 = socket2.player.status.pos;
+						var distance = dist(pos1, pos2);
+						var radii = socket2.player.status.size[0]*2;
+						if (socket1 != socket2 && socket1.player.status.alive===true && socket2.player.status.alive===true && distance < radii) {
+							var direction = norm(sub(copy(pos2), pos1));
+							var vel1 = copy(socket1.player.status.vel);
+							var vel2 = copy(socket2.player.status.vel);
+							var impact1 = [0, 0];
+							var impact2 = [0, 0];
+							if(mag(vel1) > 0.1) {
+								impact1 = mult(copy(direction), scalarProjection(vel1, copy(direction)));
+								sub(socket1.player.status.vel, impact1);
+								if(socket1.player.stats.bumper && Math.abs(angle(impact1, rad2dir(socket1.player.status.rotation))) < 0.8) {
+									mult(impact1, socket1.player.stats.bumperFactor);
+									damagePlayer(socket2, 5);
+								}
+								add(socket2.player.status.vel, impact1);
+							}
+							if (mag(vel2) > 0.1) {
+								var opposite = mult(copy(direction), -1);
+								impact2 = mult(copy(opposite), scalarProjection(vel2, opposite));
+								sub(socket2.player.status.vel, impact2);
+								if(socket2.player.stats.bumper && Math.abs(angle(impact2, rad2dir(socket2.player.status.rotation))) < 0.8) {
+									mult(impact2, socket2.player.stats.bumperFactor);
+									damagePlayer(socket1, 5);
+								}
+								add(socket1.player.status.vel, impact2);
+							}
+							
+							moveback1 = (radii - distance + 0.5) * mag(impact1) / (mag(impact1) + mag(impact2));  // TODO testa
+							moveback2 = -(radii - distance + 0.5) * mag(impact2) / (mag(impact1) + mag(impact2));
+							
+							sub(socket1.player.status.pos, mult(copy(direction), moveback1));
+							sub(socket2.player.status.pos, mult(copy(direction), moveback2));
+							
+							if (mag(vel1) + mag(vel2) > 10) {
+								io.world.effects.push(io.particleGenerator.generateSmoke(sub(copy(pos2), mult(copy(direction), socket2.player.status.size[0])), 1));
+							}
+						}
+					}
+				});
+				
+				// // Wait with applying the velocity until all collisions have been settled
+				// add(socket1.player.status.pos, mult(copy(socket1.player.status.vel), elapsed));
+				
+				// Collision with projectiles
+				io.world.projectiles.map((projectile) => {
+					var pos2 = projectile.pos;
+					if (socket1.player.status.id != projectile.owner && dist(pos1, pos2) < socket1.player.status.size[0]) {
+						var direction = norm(copy(projectile.vel));
+						if(socket1.player.stats.nose && Math.abs(angle(direction, rad2dir(socket1.player.status.rotation + Math.PI))) < 0.6 && Math.random() < 0.5) {
+							console.log("Deflected! Incoming angle: " + Math.abs(angle(direction, rad2dir(socket1.player.status.rotation + Math.PI))));
+							var magnitude = mag(projectile.vel);
+							var newDirection = norm(rad2dir(dir2rad(projectile.vel) + (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2)));
+							projectile.vel = mult(copy(newDirection), magnitude);
+							projectile.pos = add(copy(pos1), mult(copy(newDirection), socket1.player.status.size[0] + 1));
+							io.world.effects.push(io.particleGenerator.generateSmoke(projectile.pos, 1));
+						} else {
+							add(socket1.player.status.vel, mult(direction, socket1.player.stats.rocketForce));
+							damagePlayer(socket1, 10);
+							projectile.done = true;
+							io.world.effects.push(io.particleGenerator.generateExplosion(projectile.pos));
+						}
+					}
+				});
+				
+				// Collision with scrap
+				io.world.scraps.map((scrap) => {
+					if (dist(pos1, scrap.pos) < socket1.player.status.size[1]) {
+						setScrapCount(socket1, socket1.player.hud.scrap + 1);
+						io.world.effects.push(io.particleGenerator.generateGold(scrap.pos));
+						scrap.done = true;
+					}
+				});
+				
+				// Collision with critters
+				io.world.level.critters.map((critter) => {
+					if (dist(pos1, critter.pos) < socket1.player.status.size[1]) {
+						io.world.effects.push(io.particleGenerator.generateBlood(critter.pos, socket1.player.status.vel));
+						io.world.effects.push(io.particleGenerator.generateBloodStain(critter.pos));
+						critter.done = true;
+					}
+				});
+				
+				// Parachute effective 
+				if(socket1.player.status.parachute) {
+					add(socket1.player.status.parachute.pos, mult(copy(socket1.player.status.parachute.vel), elapsed));
+					if(dist(socket1.player.status.parachute.pos, socket1.player.status.pos) > 50 && !socket1.player.status.parachute.effective) {
+						socket1.player.status.parachute.effective = true;
+						mult(socket1.player.status.vel, 0.4);
+						socket1.player.status.parachute.vel = copy(socket1.player.status.vel);
+						socket1.player.status.rotation = dir2rad(sub(copy(socket1.player.status.parachute.pos), socket1.player.status.pos));
+						socket1.player.status.parachute.rotation = dir2rad(sub(copy(socket1.player.status.pos), socket1.player.status.parachute.pos));
+						setTimeout(() => { socket1.player.status.parachute = undefined; }, 300);
+					}
+				}
+				
+				// Is shopping?
+				if(io.world.level.shop !== undefined) {
+					if(socket1.player.status.alive===true && dist(pos1, io.world.level.shop.pos) < io.world.level.shop.radius) {
+						if(socket1.player.hud.shopping === false) {
+							socket1.player.hud.shopping = true;
+							socket1.player.hud.health = 100;
+							socket1.player.status.alive = false;
+							socket1.player.status.vel = [0, 0];
+							socket1.player.status.pos = copy(io.world.level.shop.pos);
+							socket1.emit('hud update', JSON.stringify(socket1.player.hud));
+						}
+					}
+				}
+				
+			});
+			
+			// Move projectiles and kill them if too far away
+			io.world.projectiles.map((projectile) => {
+				add(projectile.pos, mult(copy(projectile.vel), elapsed));
+				if (mag(projectile.pos) > 2000) {
+					projectile.done = true;
+				}
+			});
+			
+			// Move critters
+			io.world.level.critters.map((critter) => {
+				add(critter.vel, mult(copy(critter.acc), elapsed));
+				add(critter.pos, mult(copy(critter.vel), elapsed));
+				critter.rotation = dir2rad(critter.vel);
+			});
+			
+			
 			
 			
 			
@@ -640,7 +653,7 @@ app.listen(3000, function(){
 				effect.done = true;
 			} else {
 				effect.particles.map((particle) => {
-					add(particle.pos, mult(copy(particle.direction), particle.speed));
+					add(particle.pos, mult(copy(particle.direction), particle.speed * elapsed / 0.01666));
 				});
 			}
 		});
@@ -658,9 +671,16 @@ app.listen(3000, function(){
 			return critter.done !== true;
 		});
 		io.world.projectiles.map((projectile) => {
-			io.world.effects.push(io.particleGenerator.generateRocketTail(projectile.pos, projectile.vel));
+			if(!projectile.lastSmokeEmittedTime || Date.now() - projectile.lastSmokeEmittedTime > 20) {
+				io.world.effects.push(io.particleGenerator.generateRocketTail(projectile.pos, projectile.vel));
+				projectile.lastSmokeEmittedTime = Date.now();
+			}
 		});
-	}, 16.6666);
+		this.timeSpentWithPhysics = Date.now() - startTime;
+		if(!this.mostTimeSpentWithPhysics || this.timeSpentWithPhysics > this.mostTimeSpentWithPhysics) {
+			this.mostTimeSpentWithPhysics = this.timeSpentWithPhysics;
+		}
+	}, physicsInterval * 1000);
 	setInterval(() => {
 		io.emit('world update', JSON.stringify({
 			players: io.world.players,
@@ -672,6 +692,7 @@ app.listen(3000, function(){
 	}, 16.6666);
 	setInterval(() => {
 		runFlocking(io.world.level.critters);
+		console.log("Time spent with physics: " + this.mostTimeSpentWithPhysics);
 	}, 200);
 });
 

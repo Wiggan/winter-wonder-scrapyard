@@ -5,7 +5,8 @@ global.StateEnum = {
 	lobby: 1,
 	normal: 2,
 	arena: 3,
-	transition: 4
+	transition: 4,
+	shopping: 5
 };
 Object.freeze(global.StateEnum);
 
@@ -41,6 +42,21 @@ module.exports = class GameStateMachine {
 				if(connectionCount < 2) {
 					this.resetPlayers();
 					this.startLobby();
+				}
+			break;
+			case StateEnum.shopping:
+				if(connectionCount < 2) {
+					this.resetPlayers();
+					this.startLobby();
+				}
+				var shoppingCount = 0;
+				Object.values(this.io.sockets.sockets).map((socket) => {
+					if(socket.player.hud.shopping) shoppingCount++;
+				});
+				if(shoppingCount == 0) {
+					clearTimeout(this.io.world.shoppingTimeout);
+					this.startArenaRound();
+					console.log("All shopping is done");
 				}
 			break;
 			case StateEnum.arena:
@@ -127,6 +143,7 @@ module.exports = class GameStateMachine {
 		console.log("Starting normal round!");
 		this.io.world.gameState.physicsOn = false;
 		this.io.world.gameState.state = StateEnum.normal;
+		this.io.emit('game update', JSON.stringify(this.io.world.gameState));
 		this.io.world.scraps = [];
 		this.io.world.projectiles = [];
 		this.io.world.level = this.io.levelGenerator.generate(800, 600);
@@ -161,6 +178,8 @@ module.exports = class GameStateMachine {
 			socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
 			socket.emit('hud update', JSON.stringify(socket.player.hud));
 		});
+		this.io.world.gameState.state = StateEnum.shopping;
+		this.io.emit('game update', JSON.stringify(this.io.world.gameState));
 		this.io.world.shoppingTimeout = setTimeout(() => {
 			this.startArenaRound();
 		}, this.io.world.config.parameters.shoppingTime);
@@ -169,6 +188,7 @@ module.exports = class GameStateMachine {
 	startArenaRound() {
 		console.log("Starting arena!");
 		this.io.world.gameState.state = StateEnum.arena;
+		this.io.emit('game update', JSON.stringify(this.io.world.gameState));
 		this.io.world.scraps = [];
 		this.io.world.projectiles = [];
 		this.io.world.level = this.io.levelGenerator.generate(800, 600, true);
@@ -189,6 +209,7 @@ module.exports = class GameStateMachine {
 		this.io.world.projectiles = [];
 		this.io.world.gameState.physicsOn = false;
 		this.io.world.gameState.state = StateEnum.lobby;
+		this.io.emit('game update', JSON.stringify(this.io.world.gameState));
 		this.io.world.level = this.io.levelGenerator.generate(800, 600);
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
 		Object.values(this.io.sockets.sockets).map((socket) => {
