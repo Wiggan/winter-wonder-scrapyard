@@ -108,6 +108,10 @@ class Shop extends React.Component {
 			this.network.Network.fit();  // Fy fan.
 		}
 		//console.log(this.network);
+	} 
+	 
+	componentWillUnmount() {
+		Socket.setOnShop(null);
 	}
 	
 	setVisible(visible) {

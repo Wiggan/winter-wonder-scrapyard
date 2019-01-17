@@ -209,7 +209,7 @@
 	},
 	"parameters": {
 		"waterDamage": 50,
-		"roundTime": 90000,
+		"roundTime": 9000,
 		"shoppingTime": 10000,
 		"scrapInterval": 4000,
 		"scrapCap": 10,

@@ -21,10 +21,14 @@ module.exports = class LevelGenerator {
 		this.squareSize = 60;
 		this.cols = Math.round(this.width / this.squareSize);
 		this.rows = Math.round(this.height / this.squareSize);
-		this.randomFill();
+		this.randomFill(arena);
 		this.smooth();
 		this.explode();
+		if(arena) {
+			this.smooth();
+		}
 		this.explode();
+		this.smooth();
 		this.rocks = [];
 		this.critters = [];
 		if(arena) {
@@ -32,7 +36,7 @@ module.exports = class LevelGenerator {
 		} else {
 			this.shop = this.addShop();
 		}
-		this.addRocks();
+		this.addRocks(arena);
 		this.addCritters();
 		return {
 			squareSize: this.squareSize,
@@ -44,7 +48,7 @@ module.exports = class LevelGenerator {
 		}
 	}
 
-	randomFill() {
+	randomFill(arena) {
 		this.grid = []
 		for(var x = 0; x < this.cols; x++) {
 			this.grid.push([]);
@@ -57,10 +61,12 @@ module.exports = class LevelGenerator {
 				this.grid[x][y] = 1;
 			}
 		}
-		for(var x = 1; x < this.cols-1; x++) {
-			for(var y = 1; y < this.rows-1; y++) {
-				if(Math.random() < 0.3) {
-					this.grid[x][y] = getRandomIntInclusive(0, 1);
+		if(!arena) {
+			for(var x = 1; x < this.cols-1; x++) {
+				for(var y = 1; y < this.rows-1; y++) {
+					if(Math.random() < 0.3) {
+						this.grid[x][y] = getRandomIntInclusive(0, 1);
+					}
 				}
 			}
 		}
@@ -110,20 +116,35 @@ module.exports = class LevelGenerator {
 		this.cols = this.cols * 2;
 	}
 	
-	addRocks() {
-		var rockClusterCount = getRandomIntInclusive(4, 6);
-		for(var i = 0; i < rockClusterCount; i++) {
+	addRocks(arena) {
+		if(arena) {
 			this.rocks.push({
-				pos: this.getCollisionFreePosition(),
-				radius: getRandomIntInclusive(15, 20),
-			});
-			var rockCount = getRandomIntInclusive(5, 10);
-			for(var j = 1; j < rockCount; j++) {
-				var pos = add(mult(rad2dir(Math.random() * 2 * Math.PI), this.rocks[this.rocks.length-1].radius*2), this.rocks[this.rocks.length-1].pos);
-				this.rocks.push({
-					pos: pos,
-					radius: getRandomIntInclusive(10-j, 15-j),
+					pos: [this.width/2, this.height/2],
+					radius: getRandomIntInclusive(20, 25),
 				});
+				var rockCount = getRandomIntInclusive(10, 15);
+				for(var j = 1; j < rockCount; j++) {
+					var pos = add(mult(rad2dir(Math.random() * 2 * Math.PI), this.rocks[this.rocks.length-1].radius*2), this.rocks[this.rocks.length-1].pos);
+					this.rocks.push({
+						pos: pos,
+						radius: getRandomIntInclusive(15-j, 20-j),
+					});
+				}
+		} else {
+			var rockClusterCount = getRandomIntInclusive(3, 4);
+			for(var i = 0; i < rockClusterCount; i++) {
+				this.rocks.push({
+					pos: this.getCollisionFreePosition(),
+					radius: getRandomIntInclusive(15, 20),
+				});
+				var rockCount = getRandomIntInclusive(5, 10);
+				for(var j = 1; j < rockCount; j++) {
+					var pos = add(mult(rad2dir(Math.random() * 2 * Math.PI), this.rocks[this.rocks.length-1].radius*2), this.rocks[this.rocks.length-1].pos);
+					this.rocks.push({
+						pos: pos,
+						radius: getRandomIntInclusive(10-j, 15-j),
+					});
+				}
 			}
 		}
 	}

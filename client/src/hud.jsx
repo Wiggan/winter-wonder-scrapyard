@@ -260,14 +260,16 @@ class HUD extends React.Component {
 	renderControls() {
 		return(
 			<div>
-				<div style={{color: this.getControlStyle(true)}}>Controls:</div>
-				<div style={{color: this.getControlStyle(true)}}>WASD - Steering</div>
-				<div style={{color: this.getControlStyle(true)}}>Space - Brake</div>
-				<div style={{color: this.getControlStyle(this.state.hud.rockets)}}>Up - Fire</div>
-				<div style={{color: this.getControlStyle(this.state.hud.towerRotation)}}>Left/Right - Turret rotation</div>
-				<div style={{color: this.getControlStyle(this.state.hud.boost)}}>E - Boost</div>
-				<div style={{color: this.getControlStyle(this.state.hud.parachute)}}>Q - Parachute</div>
-				<div style={{color: this.getControlStyle(true)}}>Esc - Leave Shop</div>
+				<div style={{color: this.getControlStyle(true)}}>Controls (Keyboard/Gamepad):</div>
+				<div style={{color: this.getControlStyle(true)}}>AD/Left Wheel - Steering</div>
+				<div style={{color: this.getControlStyle(true)}}>W/RT - Forwards</div>
+				<div style={{color: this.getControlStyle(true)}}>S/LT - Backwards</div>
+				<div style={{color: this.getControlStyle(true)}}>Space/B - Brake</div>
+				<div style={{color: this.getControlStyle(this.state.hud.rockets)}}>Up/X - Fire</div>
+				<div style={{color: this.getControlStyle(this.state.hud.towerRotation)}}>Left&Right/Right Wheel - Turret rotation</div>
+				<div style={{color: this.getControlStyle(this.state.hud.boost)}}>E/A - Boost</div>
+				<div style={{color: this.getControlStyle(this.state.hud.parachute)}}>Q/LB - Parachute</div>
+				<div style={{color: this.getControlStyle(true)}}>Esc/Back - Leave Shop</div>
 			</div>
 		);
 	}

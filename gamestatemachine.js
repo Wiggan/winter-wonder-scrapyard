@@ -1,5 +1,7 @@
 var chance = require('chance').Chance();
-
+require('./utility.js');
+var mult = require('vectors/mult')(2);
+var add = require('vectors/add')(2);
 
 global.StateEnum = {
 	lobby: 1,
@@ -118,8 +120,12 @@ module.exports = class GameStateMachine {
 		});
 	}
 	
-	respawnPlayer(socket) {
-		socket.player.status.pos = this.io.levelGenerator.getCollisionFreePosition();
+	respawnPlayer(socket, arena, index, count) {
+		if(arena) {
+			socket.player.status.pos = add(mult(rad2dir(index / count * 2 * Math.PI), 200), [this.io.levelGenerator.width/2, this.io.levelGenerator.height/2]);
+		} else {
+			socket.player.status.pos = this.io.levelGenerator.getCollisionFreePosition();
+		}
 		socket.player.status.vel = [0, 0];
 		socket.player.status.rotation = this.io.levelGenerator.getInwardRotation(socket.player.status.pos);
 		socket.player.status.towerrotation = 0;
@@ -193,10 +199,12 @@ module.exports = class GameStateMachine {
 		this.io.world.projectiles = [];
 		this.io.world.level = this.io.levelGenerator.generate(800, 600, true);
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
-		Object.values(this.io.sockets.sockets).map((socket) => {
+		var socketCount = Object.keys(this.io.sockets.sockets).length;
+		for(var i = 0; i < socketCount; i++) {
+			var socket = Object.values(this.io.sockets.sockets)[i];
 			socket.player.hud.shopping = false;
-			this.respawnPlayer(socket);
-		});
+			this.respawnPlayer(socket, true, i, socketCount);
+		}
 		
 		this.runCountDown("Entering Arena");
 	}
@@ -212,6 +220,7 @@ module.exports = class GameStateMachine {
 		this.io.emit('game update', JSON.stringify(this.io.world.gameState));
 		this.io.world.level = this.io.levelGenerator.generate(800, 600);
 		this.io.emit('new map', JSON.stringify(this.io.world.level));
+		
 		Object.values(this.io.sockets.sockets).map((socket) => {
 			this.respawnPlayer(socket);
 			socket.player.hud.ready = false;

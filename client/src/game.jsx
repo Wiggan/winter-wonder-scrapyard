@@ -213,13 +213,13 @@ class Game extends React.Component {
 	drawRichness(ctx, player) {
 		
 		ctx.fillStyle = "rgb(30, 30, 30)";
-		ctx.fillRect(-player.size[0]/2 + 4, -player.size[1]/2 + 1, player.size[0] - 8, 2);
+		ctx.fillRect(-player.size[0]/2 + 4, -player.size[1]/2 + 1, player.size[0] - 8, 3);
 		
 		var origShadowColor = ctx.shadowColor;
 		ctx.shadowColor = "rgb(230, 200, 100)";
 		ctx.shadowBlur = 10;
 		ctx.fillStyle = "rgb(200, 180, 70)";
-		ctx.fillRect(-player.size[0]/2 + 4, -player.size[1]/2 + 1, Math.min(player.richness, player.size[0] - 8), 2);
+		ctx.fillRect(-player.size[0]/2 + 4, -player.size[1]/2 + 1, Math.min(player.richness, player.size[0] - 8), 3);
 		ctx.shadowColor = origShadowColor;
 		
 		ctx.globalAlpha = 0.6;
@@ -495,7 +495,7 @@ class Game extends React.Component {
 		ctx2.shadowBlur = 1;
 		ctx2.fillStyle = 'grey';
 		
-		ctx.globalAlpha = 0.7;
+		ctx.globalAlpha = 0.6;
 		this.state.world.critters.forEach((critter) => {
 			ctx.save();
 			ctx.translate(critter.pos[0], critter.pos[1]);
@@ -727,6 +727,7 @@ class Game extends React.Component {
 
 	componentWillUnmount(){
 		clearInterval(this.state.intervalId);
+		// TODO clear socket listeners...
 	}
 }
 
