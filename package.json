@@ -4,6 +4,7 @@
   "description": "Scrappy dedicated server",
   "dependencies": {
     "chance": "^1.0.18",
+    "freedns-api": "^1.0.0",
     "mathjs": "^5.4.0",
     "self-reload-json": "^0.4.0",
     "socket.io": "^2.2.0",

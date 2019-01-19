@@ -35,8 +35,8 @@ class Socket extends React.Component {
 	getHud() {
 		this.socket.emit('get hud');
 	}
-	ready() {
-		this.socket.emit('ready');
+	ready(name) {
+		this.socket.emit('ready', name);
 	}
 	
 	setOnNewMap(callback) {

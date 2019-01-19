@@ -28,8 +28,13 @@ function roundAxis(value) {
 }
 
 class Controllers extends React.Component {
-
+	constructor() {
+		super();
+		this.hogAllInput = true;
+	}
+	
 	setup() {
+		
 		window.addEventListener("gamepadconnected", function(e) {
 			this.gamepad = navigator.getGamepads()[e.gamepad.index];
 			console.log(this.gamepad);
@@ -151,22 +156,22 @@ class Controllers extends React.Component {
 		window.addEventListener("gamepaddisconnected", function(e) {
 			clearInterval(this.gamepadInterval);
 		});
-		window.addEventListener('keydown', this.keydown, true);
-		window.addEventListener('keyup', this.keyup, true);
+		window.addEventListener('keydown', this.keydown.bind(this), true);
+		window.addEventListener('keyup', this.keyup.bind(this), true);
+		
 	}
 	
 		
 	keydown(e) {
 		Socket.keydown(e.keyCode);
-		if(e.keyCode !== 116) {
+		if(e.keyCode !== 116 && this.hogAllInput) {
 			e.preventDefault();
 		}
 	}
 	keyup(e) {
 		Socket.keyup(e.keyCode);
-		if(e.keyCode !== 116) {
+		if(e.keyCode !== 116 && this.hogAllInput) {
 			e.preventDefault();
-		
 		}
 	}
 	

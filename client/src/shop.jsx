@@ -34,19 +34,6 @@ class Shop extends React.Component {
 			);
 		}
     }
-
-	keydown(e) {
-		Socket.keydown(e.keyCode);
-		if(e.keyCode !== 116) {
-			e.preventDefault();
-		}
-	}
-	keyup(e) {
-		Socket.keyup(e.keyCode);
-		if(e.keyCode !== 116) {
-			e.preventDefault();
-		}
-	}
 	
 	onNodeClicked(values, id, selected, hovering) {
 		if(selected) {
@@ -98,8 +85,6 @@ class Shop extends React.Component {
 	componentDidMount() {
 		Socket.setOnShop(this.onShop.bind(this));
 		Socket.getShop();
-		window.addEventListener('keydown', this.keydown.bind(this), true);
-		window.addEventListener('keyup', this.keyup.bind(this), true);
 	}
 	
 	componentDidUpdate() {
@@ -115,7 +100,6 @@ class Shop extends React.Component {
 	}
 	
 	setVisible(visible) {
-		console.trace();
 		this.setState({
 			visible: visible
 		});

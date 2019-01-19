@@ -34,6 +34,25 @@ var gameStateMachine = new (require('./gamestatemachine.js'))(io);
 var Particle = require('./particlegenerator.js');
 io.particleGenerator = new Particle();
 
+// FreeDNS stuff
+const freednsApi = require('freedns-api');
+(async () => {
+    try {
+        const entries = await freednsApi.getdyndns({
+            username: 'wighz',
+            password: '280ad21fb9'
+        });
+        const status = await freednsApi.update({
+            updateUrl: entries[0].updateUrl
+        });
+        console.log(status);
+    } catch (error) {
+        console.error(error);
+    }
+    
+})();
+
+
 const physicsInterval = 0.007;
 
 var connectionCount = 0;
@@ -112,7 +131,8 @@ io.on('connection', function(socket){
 	socket.on('get shop', function(){
 		socket.emit('get shop', JSON.stringify(getCurrentShop(socket.player)));
 	});
-	socket.on('ready', function(){
+	socket.on('ready', function(name) {
+		socket.player.hud.name = name;
 		socket.player.hud.ready = true;
 		socket.emit('hud update', JSON.stringify(socket.player.hud));
 	});
@@ -311,19 +331,22 @@ function damagePlayer(socket, damage) {
 				setScrapCount(socket, 0);
 				setTimeout(() => {
 					if(io.world.gameState.state != StateEnum.arena) {
-						var scrapPos = io.levelGenerator.getCollisionFreePosition();
+						var scrapPos = socket.player.status.pos;
+						if(io.levelGenerator.isInWater(scrapPos)) {
+							scrapPos = io.levelGenerator.getCollisionFreePosition();
+						}
 						io.world.effects.push(io.particleGenerator.generateScrapSpawn(scrapPos, Math.min(scrapCountAtDeath*5, 35)));
 						for(var i=0; i<scrapCountAtDeath; i++) {
 							io.world.scraps.push({pos: [scrapPos[0] - getRandomIntInclusive(-6, 6), scrapPos[1] - getRandomIntInclusive(-6, 6)]});
 						}
 					}
-				}, 1000);
+				}, 500);
 			case StateEnum.lobby:
 				setTimeout(() => {
 					if(!socket.player.status.alive && io.world.gameState.state != StateEnum.arena) {
 						gameStateMachine.respawnPlayer(socket);
 					}
-				}, 2000);								
+				}, 500);								
 			break;
 		}
 	}
@@ -692,7 +715,7 @@ app.listen(3000, function(){
 	}, 16.6666);
 	setInterval(() => {
 		runFlocking(io.world.level.critters);
-		console.log("Time spent with physics: " + this.mostTimeSpentWithPhysics);
+		//console.log("Time spent with physics: " + this.mostTimeSpentWithPhysics);
 	}, 200);
 });
 

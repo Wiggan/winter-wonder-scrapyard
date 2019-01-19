@@ -1,5 +1,6 @@
 import React from 'react';
 import Socket from './socket'
+import Controllers from './controllers'
 import './hud.css'
 
 var StateEnum = {
@@ -28,7 +29,14 @@ class HUD extends React.Component {
 			boostProgress: 1,
 			parachuteProgress: 1,
 			scrapColor: "white",
+			name: "",
 		};
+		
+		
+		this.handleChange = this.handleChange.bind(this);
+		this.onTextFocusIn = this.onTextFocusIn.bind(this);
+		this.onTextFocusOut = this.onTextFocusOut.bind(this);
+		this.onReadyClicked = this.onReadyClicked.bind(this);
 	}
 
 	onCoolDown(msg) {
@@ -87,6 +95,10 @@ class HUD extends React.Component {
 		}
 		var newState = this.state;
 		newState.hud = newHud;
+		if(!this.hasGottenName) {
+			newState.name = newHud.name;
+			this.hasGottenName = true;
+		}
 		this.setState(newState);
 	} 
 	onGameUpdate(game) {
@@ -134,14 +146,34 @@ class HUD extends React.Component {
 		);
 	}
 	
-	onReadyClicked() {
-		Socket.ready();
+	handleChange(event) {
+		this.setState({name: event.target.value});
+	}
+	onReadyClicked(event) {
+		if(this.state.name.length) {
+			Socket.ready(this.state.name);
+		} else {
+			Socket.ready(this.state.hud.name);
+		}
+		event.preventDefault();
+	}
+	onTextFocusIn(event) {
+		Controllers.hogAllInput = false;
+	}
+	onTextFocusOut(event) {
+		Controllers.hogAllInput = true;
 	}
 	
 	renderReadyButton() {
 		if(!this.state.hud.ready && this.state.game.state === StateEnum.lobby) {
 			return(
-				<button onClick={this.onReadyClicked}>Ready</button>
+				<form onSubmit={this.onReadyClicked}>
+					<label>
+						Name:
+						<input type="text" value={this.state.name} onChange={this.handleChange} onFocus={this.onTextFocusIn} onBlur={this.onTextFocusOut} />
+					</label>
+					<input type="submit" value="Ready" />
+				</form>
 			);
 		} else {
 			return (

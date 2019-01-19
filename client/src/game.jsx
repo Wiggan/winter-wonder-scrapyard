@@ -74,6 +74,12 @@ class Game extends React.Component {
 		bb1.clearRect(0, 0, width, height);
 		bb1.drawImage(this.tracecanvas2, 0, 0);
 		ctx2.clearRect(0, 0, width, height);
+		if(this.indicateDamage === true) {
+			ctx2.globalAlpha = 0.08;
+			ctx2.fillStyle = "red";
+			ctx2.fillRect(0, 0, width, height);
+			ctx2.globalAlpha = 1.0;
+		}
 		ctx2.globalAlpha = 0.82;
 		ctx2.drawImage(this.backbuffer1, 0, 0);
 		ctx2.globalAlpha = 1.0;
@@ -705,6 +711,13 @@ class Game extends React.Component {
 	}
 	onHudUpdate(msg) {
 		var hud = JSON.parse(msg);
+		if(hud.health < this.previousHealth) {
+			this.indicateDamage = true;
+			clearTimeout(this.damageIndicatorTimeout);
+			this.damageIndicatorTimeout = setTimeout(() => {
+				this.indicateDamage = false;
+			}, 50);
+		}
 		var newWorld = this.state.world;
 		newWorld.notification = hud.notification;
 		if(this.shop && hud.shopping !== this.shop.state.visible) {
@@ -713,6 +726,7 @@ class Game extends React.Component {
 		this.setState({
 			world: newWorld
 		});
+		this.previousHealth = hud.health;
 	} 
 	
 	componentDidMount(){
