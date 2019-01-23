@@ -293,7 +293,7 @@ class HUD extends React.Component {
 		return(
 			<div>
 				<div style={{color: this.getControlStyle(true)}}>Controls (Keyboard/Gamepad):</div>
-				<div style={{color: this.getControlStyle(true)}}>AD/Left Wheel - Steering</div>
+				<div style={{color: this.getControlStyle(true)}}>A&D/Left Wheel - Steering</div>
 				<div style={{color: this.getControlStyle(true)}}>W/RT - Forwards</div>
 				<div style={{color: this.getControlStyle(true)}}>S/LT - Backwards</div>
 				<div style={{color: this.getControlStyle(true)}}>Space/B - Brake</div>

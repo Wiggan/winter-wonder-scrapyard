@@ -176,7 +176,7 @@ io.on('connection', function(socket){
 				socket.player.stats.waterDefense += item.waterDefense;
 				break;
 			case 104: // Skovelhjul
-				socket.player.status.paddle = true;
+				socket.player.stats.paddles = true;
 				socket.player.stats.waterDefense += item.waterDefense;
 				break;
 			case 103: // Bromsskärm
@@ -492,7 +492,11 @@ app.listen(3000, function(){
 					
 					// Check if player is in water
 					if(io.levelGenerator.isInWater(socket.player.status.pos)) {
-						damagePlayer(socket, elapsed * (io.world.config.parameters.waterDamage - socket.player.stats.waterDefense));
+						var damage = io.world.config.parameters.waterDamage - socket.player.stats.waterDefense;
+						if(socket.player.stats.paddles) {
+							damage *= Math.max(0.5, 250 / (mag(socket.player.status.vel) + 250));
+						}
+						damagePlayer(socket, elapsed * damage);
 					}
 				}
 			});

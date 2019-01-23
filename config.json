@@ -81,10 +81,10 @@
 			{
 				"id": 104,
 				"label": "Skovelhjul",
-				"title": "Överlev ännu längre ute till sjös.",
-				"cost": 3,
+				"title": "Överlev ännu längre ute till sjös. Håll dig på ytan genom att köra fort!",
+				"cost": 6,
 				"level": 3,
-				"waterDefense": 15
+				"waterDefense": 10
 			},
 			
 			{
@@ -192,6 +192,7 @@
 			"towerRotation": false,
 			"tripple": false,
 			"nose": false,
+			"paddles": false,
 			"parachute": false,
 			"parachuteCooldown": false
 		},
